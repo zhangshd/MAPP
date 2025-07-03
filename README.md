@@ -22,7 +22,7 @@ MAPP/
 │   ├── slurm_sub.py            # SLURM job submission
 │   ├── datamodule/             # Data loading and processing
 │   ├── module/                 # Model architectures
-│   └── data/                   # Training data
+│   └── data/                   # Training data  (available in https://zenodo.org/records/15796757)
 │
 ├── MOFTransformer/             # MOFTransformer model implementation
 │   ├── main.py                 # Main training script
@@ -36,7 +36,7 @@ MAPP/
 │   ├── datamodule/             # Data loading and processing
 │   ├── module/                 # Model architectures
 │   ├── models/                 # Pre-trained models
-│   └── logs/                   # Training logs
+│   └── logs/                   # Training logs (available in https://zenodo.org/records/15796757)
 │
 ├── GCMC/                       # Grand Canonical Monte Carlo simulations
 │   ├── gcmc_process.py         # Main GCMC process management
