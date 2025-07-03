@@ -2,7 +2,7 @@
 
 ## Overview
 
-MAPP is a comprehensive machine learning framework for predicting gas adsorption properties in Metal-Organic Frameworks (MOFs) under realistic conditions (e.g., pressure and gas composition). The project combines Grand Canonical Monte Carlo (GCMC) simulations, advanced molecular representations, and deep learning models to predict adsorption isotherms for CO2 and N2 in MOF structures.
+MAPP is a machine learning framework for predicting gas adsorption properties in Metal-Organic Frameworks (MOFs) under various conditions (e.g., pressure and gas composition). The project combines Grand Canonical Monte Carlo (GCMC) simulations, advanced molecular representations, and deep learning models to predict adsorption isotherms for CO2 and N2 in MOF structures.
 
 ## Project Structure
 
