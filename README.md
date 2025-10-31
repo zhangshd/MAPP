@@ -218,7 +218,7 @@ results_dir = Path('results/')
 ### Data Splits
 - **Training**: 80% of MOF database
 - **Validation**: 10% for hyperparameter tuning
-- **Test**: 10% for final evaluation
+- **Test**: 10% for evaluation
 - **Clustering-based splits** available for domain generalization
 
 ## Requirements
