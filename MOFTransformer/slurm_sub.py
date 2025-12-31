@@ -15,11 +15,11 @@ job_templet = """#!/bin/bash
 #SBATCH --error=slurm_logs/%x_%A.err
 #SBATCH --partition=C9654 
 #SBATCH --ntasks-per-node={n_gpus}
-#SBATCH --cpus-per-task=96
+#SBATCH --cpus-per-task=32
 #SBATCH --mem-per-gpu=200G
 #SBATCH --gres=gpu:{n_gpus}
-export PATH=/opt/share/miniconda3/envs/mofmthnn/bin/:$PATH
-export LD_LIBRARY_PATH=/opt/share/miniconda3/envs/mofmthnn/lib/:$LD_LIBRARY_PATH
+export PATH=/opt/share/miniconda3/envs/mofnn/bin/:$PATH
+export LD_LIBRARY_PATH=/opt/share/miniconda3/envs/mofnn/lib/:$LD_LIBRARY_PATH
 
 srun python -u main.py
 """
@@ -46,11 +46,13 @@ if __name__ == '__main__':
         # "ads_qst_co2_n2",
         # "ads_s_qst_co2_n2",
         # "ads_s_co2_n2",
+        "ads_s_co2_n2_org",
+        "ads_s_qst_co2_n2_org",
         # "ads_co2_n2",
         # "ads_co2_pure",
         # "ads_n2_pure",
         # "ads_co2_n2_pure",
-        "ads_s_co2_n2_mix"
+        # "ads_s_co2_n2_mix"
        
                      ]
     script_name = "run_slurm.sh"
@@ -80,7 +82,7 @@ if __name__ == '__main__':
                     lr_mult = 1
                 else:
                     learning_rate = 1e-6
-                    lr_mult = 100
+                    lr_mult = 0
                 
                 job_name = f"moftransformer_train_{task_config}_{model_name}"
                 conf_dict = {
@@ -95,6 +97,7 @@ if __name__ == '__main__':
                     "devices": n_gpus,
                     # "root_dataset":  str(Path(__file__).parent.parent/'CGCNN_MT/data/ddmof/mof_split_val1000_test1000_seed0'),
                     "noise_var": 0.1,
+                    "log_dir": "logs/",
                 }
                 job_script = job_templet.strip()
                 for k, v in conf_dict.items():

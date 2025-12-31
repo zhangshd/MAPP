@@ -91,12 +91,15 @@ class RegressionHead(nn.Module):
     head for Regression
     """
 
-    def __init__(self, hid_dim):
+    def __init__(self, hid_dim, Softplus=False):
         super().__init__()
         self.fc_out = nn.Linear(hid_dim, 1)
+        self.softplus = Softplus
 
     def forward(self, x):
         x = self.fc_out(x)
+        if self.softplus:
+            x = torch.nn.functional.softplus(x) ## make sure the output is non-negative
         return x
 
 

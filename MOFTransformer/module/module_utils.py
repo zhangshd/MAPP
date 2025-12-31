@@ -132,40 +132,40 @@ def set_schedule(pl_module):
                 p
                 for n, p in pl_module.named_parameters()
                 if not any(nd in n for nd in no_decay)  # not within no_decay
-                and not any(bb in n for bb in head_names)  # not within head_names
+                and not any(bb in n for bb in head_names)  # not within head_names (pretrained weights)
             ],
             "weight_decay": wd,
-            "lr": lr,
+            "lr": lr * lr_mult,  # pretrained weights use lr * lr_mult, set lr_mult=0 to freeze
         },
         {
             "params": [
                 p
                 for n, p in pl_module.named_parameters()
                 if any(nd in n for nd in no_decay)  # within no_decay
-                and not any(bb in n for bb in head_names)  # not within head_names
+                and not any(bb in n for bb in head_names)  # not within head_names (pretrained weights)
             ],
             "weight_decay": 0.0,
-            "lr": lr,
+            "lr": lr * lr_mult,  # pretrained weights use lr * lr_mult, set lr_mult=0 to freeze
         },
         {
             "params": [
                 p
                 for n, p in pl_module.named_parameters()
                 if not any(nd in n for nd in no_decay)  # not within no_decay
-                and any(bb in n for bb in head_names)  # within head_names
+                and any(bb in n for bb in head_names)  # within head_names (downstream heads)
             ],
             "weight_decay": wd,
-            "lr": lr * lr_mult,
+            "lr": lr,  # downstream heads use full lr
         },
         {
             "params": [
                 p
                 for n, p in pl_module.named_parameters()
                 if any(nd in n for nd in no_decay) and any(bb in n for bb in head_names)
-                # within no_decay and head_names
+                # within no_decay and head_names (downstream heads)
             ],
             "weight_decay": 0.0,
-            "lr": lr * lr_mult,
+            "lr": lr,  # downstream heads use full lr
         },
     ]
 

@@ -513,11 +513,11 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_extranformerv2_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv2_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv1p_from_/version_3"
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv3_from_pmtransformer/version_0"
+    model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
-    model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
+    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
     uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
     model_name = model_dir.parent.name + "_" + model_dir.name
     result_dir = Path(os.getcwd())/f"inference/{notes}"

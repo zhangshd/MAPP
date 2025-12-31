@@ -244,6 +244,45 @@ def ads_s_co2_n2():
     extra_bins=32
 
 @ex.named_config
+def ads_s_co2_n2_org():
+    exp_name = "ads_s_co2_n2_org"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'ArcsinhAbsLoadingCO2': "regression", 
+        'ArcsinhAbsLoadingN2': "regression", 
+        'ArcsinhAbsLoadingS': "regression",
+    }
+    max_epochs = 50
+    per_gpu_batchsize = 32
+    log_press = True
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["Pressure[bar]", "CO2Fraction"]
+    extra_bins=32
+
+@ex.named_config
+def ads_s_qst_co2_n2_org():
+    exp_name = "ads_s_qst_co2_n2_org"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'AbsLoadingCO2': "regression_log", 
+        'AbsLoadingN2': "regression_log", 
+        'AbsLoadingS': "regression_log",
+        'QstCO2': "regression", 
+        'QstN2': "regression", 
+    }
+    max_epochs = 50
+    per_gpu_batchsize = 32
+    log_press = True
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["Pressure[bar]", "CO2Fraction"]
+    extra_bins=32
+
+
+@ex.named_config
 def ads_co2_pure():
     exp_name = "ads_co2_pure"
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_co2'  # Data directory
