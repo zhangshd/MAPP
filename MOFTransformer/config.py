@@ -138,6 +138,35 @@ def test():
     extra_bins=32
 
 @ex.named_config
+def test_org_v4():
+    """
+    Test config for ExTransformerV4 with Langmuir gating.
+    Uses small dataset for quick validation.
+    """
+    exp_name = "test_org_v4"
+    model_name = "extranformerv4"
+    root_dataset = "data/ddmof/mof_split_val10_test10_seed0_org"
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'ArcsinhAbsLoadingCO2': "regression", 
+        'ArcsinhAbsLoadingN2': "regression", 
+    }
+    max_epochs = 2
+    per_gpu_batchsize = 16
+    log_press = False
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    extra_bins = 32
+    
+    # Langmuir gating configuration
+    langmuir_learnable_b = True   # Whether b parameter is learnable
+    langmuir_b_init = 1.0         # Initial value for b (1/bar)
+    langmuir_softplus = True      # Use softplus for non-negative output
+    arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
+    co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
+
+@ex.named_config
 def ads_qst_co2_n2():
     exp_name = "ads_qst_co2_n2"
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0'  # Data directory
@@ -242,6 +271,53 @@ def ads_s_co2_n2():
     use_cell_params = False  # Use cell parameters flag
     condi_cols = ["Pressure[bar]", "CO2Fraction"]
     extra_bins=32
+
+@ex.named_config
+def ads_co2_n2_org():
+    exp_name = "ads_co2_n2_org"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'ArcsinhAbsLoadingCO2': "regression", 
+        'ArcsinhAbsLoadingN2': "regression", 
+    }
+    max_epochs = 50
+    per_gpu_batchsize = 32
+    log_press = False
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    extra_bins=32
+
+@ex.named_config
+def ads_co2_n2_org_v4():
+    """
+    ExTransformerV4 with Langmuir gating for CO2/N2 adsorption prediction.
+    Uses arcsinh-transformed pressure and partial pressure calculation.
+    Ensures thermodynamic consistency: q(P=0)=0 and saturation at high P.
+    """
+    exp_name = "ads_co2_n2_org_v4"
+    model_name = "extranformerv4"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'ArcsinhAbsLoadingCO2': "regression", 
+        'ArcsinhAbsLoadingN2': "regression", 
+    }
+    max_epochs = 50
+    per_gpu_batchsize = 32
+    log_press = False
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    extra_bins = 32
+    
+    # Langmuir gating configuration
+    langmuir_learnable_b = True   # Whether b parameter is learnable
+    langmuir_b_init = 1.0         # Initial value for b (1/bar)
+    langmuir_softplus = True      # Use softplus for non-negative output
+    arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
+    co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
 
 @ex.named_config
 def ads_s_co2_n2_org():

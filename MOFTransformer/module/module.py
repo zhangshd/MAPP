@@ -41,6 +41,8 @@ class Module(LightningModule):
             orig_model = ExTransformerV1P(config)
         elif "model_name" in config and config["model_name"] == "extranformerv3":
             orig_model = ExTransformerV3(config)
+        elif "model_name" in config and config["model_name"] == "extranformerv4":
+            orig_model = ExTransformerV4(config)
         else:
             raise NotImplementedError
 
@@ -187,6 +189,9 @@ class Module(LightningModule):
             self.best_metric = the_metric
             self.best_epoch = self.current_epoch
             self._epoch_end(phase="val")
+        # Always clear collections at the end of each validation epoch
+        # to avoid duplicate samples accumulating across epochs
+        objectives.collections_init(self, phase="val")
 
     def on_test_start(self,):
         module_utils.set_task(self)
@@ -198,6 +203,8 @@ class Module(LightningModule):
     def on_test_epoch_end(self):
         module_utils.epoch_wrapup(self, phase="test")
         self._epoch_end(phase="test")
+        # Clear collections at the end of test epoch
+        objectives.collections_init(self, phase="test")
 
     def _step(self, batch, batch_idx, phase="val"):
         output = self(batch, phase=phase)
@@ -346,7 +353,8 @@ class Module(LightningModule):
                 )
                 logger_exp.add_figure(f'{task}/{phase}/confusion_matrix', fig, self.current_epoch)
         print(f"Best epoch: {self.best_epoch}, Best metric: {self.best_metric}")
-        objectives.collections_init(self, phase=phase)
+        # Note: collections_init is now called in on_validation_epoch_end/on_test_epoch_end
+        # to ensure proper clearing regardless of whether best model is saved
 
     def configure_optimizers(self):
         return module_utils.set_schedule(self)

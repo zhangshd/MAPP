@@ -15,7 +15,7 @@ job_templet = """#!/bin/bash
 #SBATCH --error=slurm_logs/%x_%A.err
 #SBATCH --partition=C9654 
 #SBATCH --ntasks-per-node={n_gpus}
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=48
 #SBATCH --mem-per-gpu=200G
 #SBATCH --gres=gpu:{n_gpus}
 export PATH=/opt/share/miniconda3/envs/mofnn/bin/:$PATH
@@ -46,8 +46,10 @@ if __name__ == '__main__':
         # "ads_qst_co2_n2",
         # "ads_s_qst_co2_n2",
         # "ads_s_co2_n2",
-        "ads_s_co2_n2_org",
-        "ads_s_qst_co2_n2_org",
+        # "ads_co2_n2_org",
+        "ads_co2_n2_org_v4"
+        # "ads_s_co2_n2_org",
+        # "ads_s_qst_co2_n2_org",
         # "ads_co2_n2",
         # "ads_co2_pure",
         # "ads_n2_pure",
@@ -61,7 +63,8 @@ if __name__ == '__main__':
         # "extranformerv1",
         # "extranformerv1p",
         # "extranformerv2",
-        "extranformerv3",
+        # "extranformerv3",
+        "extranformerv4"
 
     ]
 
@@ -81,7 +84,7 @@ if __name__ == '__main__':
                     learning_rate = 1e-4
                     lr_mult = 1
                 else:
-                    learning_rate = 1e-6
+                    learning_rate = 1e-4
                     lr_mult = 0
                 
                 job_name = f"moftransformer_train_{task_config}_{model_name}"

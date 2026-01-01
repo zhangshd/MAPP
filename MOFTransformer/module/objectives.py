@@ -46,20 +46,32 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
         }
     
     # infer = pl_module.infer(batch)
-    pl_module.downstream_heads[task_id].to(infer["cls_feats"].device)
-
-    logits = pl_module.downstream_heads[task_id](infer["cls_feats"]).squeeze(-1)[mask_i]  # [B]
+    head = pl_module.downstream_heads[task_id]
+    head.to(infer["cls_feats"].device)
+    
+    # Check if head requires extra_fea input (Langmuir-gated)
+    is_langmuir_head = hasattr(head, 'langmuir_gate')
+    
+    if is_langmuir_head:
+        # LangmuirGatedRegressionHead: pass extra_fea for pressure-based gating
+        extra_fea_device = batch["extra_fea"].to(infer["cls_feats"].device)
+        logits = head(infer["cls_feats"], extra_fea_device)[mask_i]  # [B]
+    else:
+        # Standard RegressionHead
+        logits = head(infer["cls_feats"]).squeeze(-1)[mask_i]  # [B]
 
     # logits = infer[f"{task}_logits"][mask_i]  # [B]
     logits = logits.to(torch.float32)
     extra_fea = batch["extra_fea"][mask_i, :]  # [B, extra_fea_dim]
 
     if "target" not in batch.keys():
+        # For Langmuir head, output is already in original scale (no denormalize needed)
+        final_logits = logits if is_langmuir_head else pl_module.denormalize(logits, task)
         return {
             f"{task}_cif_id": np.array(infer["cif_id"])[mask_i.cpu().numpy().tolist()],
             f"{task}_cls_feats": infer["cls_feats"][mask_i],
             # f"{task}_loss": torch.tensor(0.0),
-            f"{task}_logits": pl_module.denormalize(logits, task),
+            f"{task}_logits": final_logits,
             # f"{task}_labels": torch.zeros_like(logits),
             f"{task}_extra_fea": extra_fea,
             
@@ -68,19 +80,27 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     labels = batch["target"][mask_i, task_id].clone().detach()  # [B]
     assert len(labels.shape) == 1
 
-    # normalize encode if config["mean"] and config["std], else pass
-    labels = pl_module.normalize(labels, task)
-    loss = F.mse_loss(logits, labels)
-
-    labels = labels.to(torch.float32)
+    # For Langmuir head: compute loss in original scale (no normalization)
+    # For standard head: normalize labels and compute loss in normalized scale
+    if is_langmuir_head:
+        # Langmuir head outputs in original scale, so use labels directly
+        loss = F.mse_loss(logits, labels)
+        final_logits = logits
+        final_labels = labels.to(torch.float32)
+    else:
+        # Standard head: normalize labels for loss calculation
+        labels_norm = pl_module.normalize(labels, task)
+        loss = F.mse_loss(logits, labels_norm)
+        final_logits = pl_module.denormalize(logits, task)
+        final_labels = labels.to(torch.float32)  # original scale
     
 
     ret = {
         f"{task}_cif_id": np.array(infer["cif_id"])[mask_i.cpu().numpy().tolist()],
         f"{task}_cls_feats": infer["cls_feats"][mask_i],
         f"{task}_loss": loss,
-        f"{task}_logits": pl_module.denormalize(logits, task),
-        f"{task}_labels": pl_module.denormalize(labels, task),
+        f"{task}_logits": final_logits,
+        f"{task}_labels": final_labels,
         f"{task}_extra_fea": extra_fea,
     }
 

@@ -245,3 +245,124 @@ class NonLinearHead(nn.Module):
         x = self.activation_fn(x)
         x = self.linear2(x)
         return x
+
+
+class LangmuirGatedRegressionHead(nn.Module):
+    """
+    Langmuir-gated regression head for adsorption isotherm prediction.
+    
+    Ensures thermodynamic consistency:
+    - q(P=0) = 0 (vacuum boundary condition)
+    - q(P→∞) → q_sat (saturation limit)
+    
+    Architecture: q_hat = Gate(P_partial) * N(features)
+    where Gate(P) = P / (1 + b*P) is the Langmuir gate factor.
+    
+    Args:
+        hid_dim: Hidden dimension from transformer
+        learnable_b: Whether the saturation parameter b is learnable
+        b_init: Initial value for b parameter (in 1/bar units)
+        use_softplus_output: Apply softplus to ensure non-negative output
+        component: 'CO2' or 'N2' - determines which partial pressure to use
+        arcsinh_pressure_idx: Index of arcsinh(P) in extra_fea
+        co2_fraction_idx: Index of CO2 fraction in extra_fea
+    """
+    
+    def __init__(self, hid_dim, 
+                 learnable_b=True, 
+                 b_init=1.0,
+                 use_softplus_output=True,
+                 component='CO2',
+                 arcsinh_pressure_idx=0,
+                 co2_fraction_idx=2):
+        super().__init__()
+        self.fc_out = nn.Linear(hid_dim, 1)
+        self.use_softplus_output = use_softplus_output
+        self.component = component.upper()
+        self.arcsinh_pressure_idx = arcsinh_pressure_idx
+        self.co2_fraction_idx = co2_fraction_idx
+        self.learnable_b = learnable_b
+        
+        if learnable_b:
+            # Learnable saturation parameter, initialized to b_init
+            # Using raw parameter + softplus to ensure b > 0
+            self.b_raw = nn.Parameter(torch.tensor(float(b_init)))
+        else:
+            self.register_buffer('b', torch.tensor(float(b_init)))
+    
+    @property
+    def b(self):
+        """Get b parameter, ensuring it's positive."""
+        if self.learnable_b:
+            return torch.nn.functional.softplus(self.b_raw)
+        return self._buffers['b']
+    
+    def compute_partial_pressure(self, extra_fea):
+        """
+        Recover original pressure and compute partial pressure.
+        
+        Args:
+            extra_fea: [B, extra_dim] tensor containing pressure and fraction info
+        Returns:
+            P_partial: [B] tensor of component partial pressure in bar
+        """
+        arcsinh_pressure = extra_fea[:, self.arcsinh_pressure_idx]
+        
+        # Recover total pressure: P = sinh(arcsinh(P))
+        P_total = torch.sinh(arcsinh_pressure)  # [B], in bar
+        
+        # Get CO2 fraction
+        if extra_fea.shape[1] > self.co2_fraction_idx:
+            co2_fraction = extra_fea[:, self.co2_fraction_idx]
+        else:
+            # Fallback: assume CO2 if task is CO2, else N2
+            co2_fraction = torch.ones_like(P_total) if 'CO2' in self.component else torch.zeros_like(P_total)
+        
+        # Compute partial pressure based on component
+        if 'CO2' in self.component:
+            P_partial = P_total * co2_fraction
+        else:  # N2 or other
+            P_partial = P_total * (1.0 - co2_fraction)
+        
+        return P_partial
+    
+    def langmuir_gate(self, P_partial):
+        """
+        Compute Langmuir gate factor: P / (1 + b*P).
+        
+        Physical properties:
+        - P→0: Gate→0 (vacuum limit)
+        - P→∞: Gate→1/b (saturation limit)
+        
+        Args:
+            P_partial: Component partial pressure [B] in bar
+        Returns:
+            Gate factor [B]
+        """
+        epsilon = 1e-8  # Numerical stability
+        return P_partial / (1.0 + self.b * P_partial + epsilon)
+    
+    def forward(self, cls_feats, extra_fea):
+        """
+        Forward pass with Langmuir gating.
+        
+        Args:
+            cls_feats: [B, hid_dim] - pooled transformer features
+            extra_fea: [B, extra_dim] - contains arcsinh(P), log(P), CO2fraction
+        Returns:
+            output: [B] - Langmuir-gated adsorption prediction
+        """
+        # Neural network output (represents q_sat-like value)
+        nn_out = self.fc_out(cls_feats).squeeze(-1)  # [B]
+        
+        if self.use_softplus_output:
+            nn_out = torch.nn.functional.softplus(nn_out)  # Ensure non-negative
+        
+        # Compute partial pressure from extra features
+        P_partial = self.compute_partial_pressure(extra_fea)  # [B]
+        
+        # Apply Langmuir gate
+        gate = self.langmuir_gate(P_partial)  # [B]
+        output = gate * nn_out  # [B]
+        
+        return output
