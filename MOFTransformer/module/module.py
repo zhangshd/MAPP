@@ -160,6 +160,31 @@ class Module(LightningModule):
             elif "classification" in task_tp:
                 ret.update(objectives.compute_classification(self, batch, task, infer, phase))
 
+        # ===================== Selectivity Auxiliary Loss =====================
+        # Compute log-selectivity loss if configured and both CO2/N2 loading tasks exist
+        selectivity_weight = self.hparams["config"].get("selectivity_loss_weight", 0.0)
+        if selectivity_weight > 0:
+            # Find CO2 and N2 loading task names
+            co2_task = None
+            n2_task = None
+            for task in self.current_tasks.keys():
+                task_upper = task.upper()
+                if 'LOADING' in task_upper and 'CO2' in task_upper:
+                    co2_task = task
+                elif 'LOADING' in task_upper and 'N2' in task_upper:
+                    n2_task = task
+            
+            if co2_task and n2_task:
+                co2_fraction_idx = self.hparams["config"].get("co2_fraction_idx", 2)
+                selectivity_loss = objectives.compute_selectivity_loss(
+                    ret, batch, co2_task, n2_task, 
+                    co2_fraction_idx=co2_fraction_idx
+                )
+                if selectivity_loss is not None:
+                    ret["selectivity_loss"] = selectivity_loss * selectivity_weight
+                    if self.write_log:
+                        self.log(f"selectivity/{phase}/loss", selectivity_loss, sync_dist=True)
+
         return ret
     
     def on_train_start(self):

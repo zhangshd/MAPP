@@ -352,6 +352,41 @@ def ads_qst_co2_n2_org_v4():
     co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
 
 @ex.named_config
+def ads_qst_co2_n2_org_v4_sel():
+    """
+    ExTransformerV4 with Langmuir gating and selectivity auxiliary loss.
+    Same as ads_qst_co2_n2_org_v4 but with log-selectivity loss for 
+    additional physical constraint on CO2/N2 relative adsorption.
+    """
+    exp_name = "ads_qst_co2_n2_org_v4_sel"
+    model_name = "extranformerv4"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'ArcsinhAbsLoadingCO2': "regression", 
+        'ArcsinhAbsLoadingN2': "regression", 
+        'QstCO2': "regression", 
+        'QstN2': "regression", 
+    }
+    max_epochs = 50
+    per_gpu_batchsize = 32
+    log_press = False
+    use_extra_fea = True
+    use_cell_params = False
+    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    extra_bins = 32
+    
+    # Langmuir gating configuration
+    langmuir_learnable_b = True
+    langmuir_b_init = 1.0
+    langmuir_softplus = True
+    arcsinh_pressure_idx = 0
+    co2_fraction_idx = 2
+    
+    # Selectivity auxiliary loss configuration
+    selectivity_loss_weight = 0.1  # Weight for log-selectivity loss
+
+@ex.named_config
 def ads_s_co2_n2_org():
     exp_name = "ads_s_co2_n2_org"
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory

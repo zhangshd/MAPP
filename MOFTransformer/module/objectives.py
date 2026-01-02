@@ -16,6 +16,86 @@ def init_weights(module):
     if isinstance(module, nn.Linear) and module.bias is not None:
         module.bias.data.zero_()
 
+
+def compute_selectivity_loss(ret, batch, co2_task, n2_task, co2_fraction_idx=2, 
+                              min_loading=1e-6, eps=1e-8):
+    """
+    Compute log-selectivity auxiliary loss for CO2/N2 adsorption.
+    
+    Selectivity: S = (q_CO2 / y_CO2) / (q_N2 / y_N2)
+    Log-selectivity: log(S) = log(q_CO2) - log(q_N2) + log(1-y_CO2) - log(y_CO2)
+    
+    This loss encourages the model to predict correct relative adsorption between 
+    CO2 and N2, providing additional physical constraint beyond individual MSE losses.
+    
+    Args:
+        ret: Dictionary containing task outputs (logits, labels)
+        batch: Batch dictionary containing extra_fea with CO2 fraction
+        co2_task: Name of CO2 loading task (e.g., 'ArcsinhAbsLoadingCO2')
+        n2_task: Name of N2 loading task (e.g., 'ArcsinhAbsLoadingN2')
+        co2_fraction_idx: Index of CO2 fraction in extra_fea
+        min_loading: Minimum loading threshold for valid samples
+        eps: Small constant for numerical stability
+        
+    Returns:
+        Selectivity loss tensor, or None if not enough valid samples
+    """
+    # Check if both tasks have outputs
+    co2_logits_key = f"{co2_task}_logits"
+    n2_logits_key = f"{n2_task}_logits"
+    co2_labels_key = f"{co2_task}_labels"
+    n2_labels_key = f"{n2_task}_labels"
+    co2_extra_key = f"{co2_task}_extra_fea"
+    
+    if not all(k in ret for k in [co2_logits_key, n2_logits_key, co2_labels_key, n2_labels_key]):
+        return None
+    
+    # Get arcsinh-transformed predictions and labels
+    # Note: For Langmuir-gated heads, logits are already in original scale
+    arcsinh_q_co2_pred = ret[co2_logits_key]
+    arcsinh_q_n2_pred = ret[n2_logits_key]
+    arcsinh_q_co2_gt = ret[co2_labels_key]
+    arcsinh_q_n2_gt = ret[n2_labels_key]
+    
+    # Get CO2 fraction from extra_fea
+    if co2_extra_key in ret:
+        extra_fea = ret[co2_extra_key]
+        y_co2 = extra_fea[:, co2_fraction_idx]
+    else:
+        return None
+    
+    # Recover original loading from arcsinh: q = sinh(arcsinh_q)
+    q_co2_pred = torch.sinh(arcsinh_q_co2_pred)
+    q_n2_pred = torch.sinh(arcsinh_q_n2_pred)
+    q_co2_gt = torch.sinh(arcsinh_q_co2_gt)
+    q_n2_gt = torch.sinh(arcsinh_q_n2_gt)
+    
+    # Create valid mask: exclude samples where:
+    # 1. Either loading is too small (division instability)
+    # 2. Pure component (y_CO2 = 0 or 1, selectivity undefined)
+    valid_mask = (
+        (q_co2_gt > min_loading) & 
+        (q_n2_gt > min_loading) &
+        (q_co2_pred > min_loading) &
+        (q_n2_pred > min_loading) &
+        (y_co2 > eps) & 
+        (y_co2 < 1 - eps)
+    )
+    
+    if valid_mask.sum() < 2:
+        return None
+    
+    # Compute log-selectivity: log(S) = log(q_CO2/q_N2)
+    # Note: y_CO2 and y_N2 terms cancel out in MSE(log_S_pred, log_S_gt)
+    log_S_pred = torch.log(q_co2_pred[valid_mask] + eps) - torch.log(q_n2_pred[valid_mask] + eps)
+    log_S_gt = torch.log(q_co2_gt[valid_mask] + eps) - torch.log(q_n2_gt[valid_mask] + eps)
+    
+    # MSE loss on log-selectivity
+    selectivity_loss = F.mse_loss(log_S_pred, log_S_gt)
+    
+    return selectivity_loss
+
+
 def collections_init(pl_module, phase='val'):
 
     if phase == 'test':
