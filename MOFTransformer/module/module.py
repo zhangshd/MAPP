@@ -303,6 +303,7 @@ class Module(LightningModule):
                     outfile=img_file,
                 )
                 logger_exp.add_figure(f'{task}/{phase}/scatter', fig, self.current_epoch)
+                fig.close()
 
             # calculate accuracy when classification
             # if len(preds) > 1 and "classification" in self.current_tasks:
@@ -337,6 +338,7 @@ class Module(LightningModule):
                         outfile=img_file,
                     )
                     logger_exp.add_figure(f'{task}/{phase}/roc_curve', fig, self.current_epoch)
+                    fig.close()
                 else:
                     auc_score = roc_auc_score(
                         np.array(labels), np.array(logits),
@@ -352,6 +354,7 @@ class Module(LightningModule):
                     outfile=img_file,
                 )
                 logger_exp.add_figure(f'{task}/{phase}/confusion_matrix', fig, self.current_epoch)
+                fig.close()
         print(f"Best epoch: {self.best_epoch}, Best metric: {self.best_metric}")
         # Note: collections_init is now called in on_validation_epoch_end/on_test_epoch_end
         # to ensure proper clearing regardless of whether best model is saved

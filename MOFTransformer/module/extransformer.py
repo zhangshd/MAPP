@@ -1001,17 +1001,29 @@ class ExTransformerV4(nn.Module):
             if task in self.pretrain_tasks:
                 continue
             if "regression" in task_tp:
-                # Determine component from task name for Langmuir gating
-                component = 'CO2' if 'CO2' in task.upper() else 'N2'
-                head = heads.LangmuirGatedRegressionHead(
-                    hid_dim, 
-                    learnable_b=self.langmuir_learnable_b,
-                    b_init=self.langmuir_b_init,
-                    use_softplus_output=self.langmuir_softplus,
-                    component=component,
-                    arcsinh_pressure_idx=self.arcsinh_pressure_idx,
-                    co2_fraction_idx=self.co2_fraction_idx
-                )
+                task_upper = task.upper()
+                # Determine head type based on task name:
+                # - Loading tasks: use Langmuir gating for thermodynamic consistency
+                # - Qst tasks: use standard RegressionHead with Softplus (non-negative output)
+                # - Other regression tasks: use standard RegressionHead
+                if 'LOADING' in task_upper:
+                    # Adsorption loading: use Langmuir-gated head
+                    component = 'CO2' if 'CO2' in task_upper else 'N2'
+                    head = heads.LangmuirGatedRegressionHead(
+                        hid_dim, 
+                        learnable_b=self.langmuir_learnable_b,
+                        b_init=self.langmuir_b_init,
+                        use_softplus_output=self.langmuir_softplus,
+                        component=component,
+                        arcsinh_pressure_idx=self.arcsinh_pressure_idx,
+                        co2_fraction_idx=self.co2_fraction_idx
+                    )
+                elif 'QST' in task_upper:
+                    # Isosteric heat of adsorption: use Softplus to ensure positive output
+                    head = heads.RegressionHead(hid_dim, Softplus=True)
+                else:
+                    # Other regression tasks: standard linear head
+                    head = heads.RegressionHead(hid_dim, Softplus=False)
             elif "classification" in task_tp:
                 n_classes = task_tp.split("_")[-1] if "_" in task_tp else 2
                 head = heads.ClassificationHead(hid_dim, n_classes)
