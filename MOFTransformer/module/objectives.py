@@ -17,8 +17,8 @@ def init_weights(module):
         module.bias.data.zero_()
 
 
-def compute_selectivity_loss(ret, batch, co2_task, n2_task, co2_fraction_idx=2, 
-                              min_loading=1e-6, eps=1e-8):
+def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task, 
+                              co2_fraction_idx=2, min_loading=1e-6, eps=1e-8):
     """
     Compute log-selectivity auxiliary loss for CO2/N2 adsorption.
     
@@ -29,8 +29,9 @@ def compute_selectivity_loss(ret, batch, co2_task, n2_task, co2_fraction_idx=2,
     CO2 and N2, providing additional physical constraint beyond individual MSE losses.
     
     Args:
-        ret: Dictionary containing task outputs (logits, labels)
-        batch: Batch dictionary containing extra_fea with CO2 fraction
+        pl_module: Lightning module with downstream_heads
+        batch: Batch dictionary containing targets and extra_fea
+        infer: Inference result containing cls_feats (avoid duplicate forward pass)
         co2_task: Name of CO2 loading task (e.g., 'ArcsinhAbsLoadingCO2')
         n2_task: Name of N2 loading task (e.g., 'ArcsinhAbsLoadingN2')
         co2_fraction_idx: Index of CO2 fraction in extra_fea
@@ -40,29 +41,47 @@ def compute_selectivity_loss(ret, batch, co2_task, n2_task, co2_fraction_idx=2,
     Returns:
         Selectivity loss tensor, or None if not enough valid samples
     """
-    # Check if both tasks have outputs
-    co2_logits_key = f"{co2_task}_logits"
-    n2_logits_key = f"{n2_task}_logits"
-    co2_labels_key = f"{co2_task}_labels"
-    n2_labels_key = f"{n2_task}_labels"
-    co2_extra_key = f"{co2_task}_extra_fea"
-    
-    if not all(k in ret for k in [co2_logits_key, n2_logits_key, co2_labels_key, n2_labels_key]):
+    # Get task indices
+    task_list = list(pl_module.current_tasks.keys())
+    if co2_task not in task_list or n2_task not in task_list:
         return None
     
-    # Get arcsinh-transformed predictions and labels
-    # Note: For Langmuir-gated heads, logits are already in original scale
-    arcsinh_q_co2_pred = ret[co2_logits_key]
-    arcsinh_q_n2_pred = ret[n2_logits_key]
-    arcsinh_q_co2_gt = ret[co2_labels_key]
-    arcsinh_q_n2_gt = ret[n2_labels_key]
+    co2_task_id = task_list.index(co2_task)
+    n2_task_id = task_list.index(n2_task)
     
-    # Get CO2 fraction from extra_fea
-    if co2_extra_key in ret:
-        extra_fea = ret[co2_extra_key]
-        y_co2 = extra_fea[:, co2_fraction_idx]
+    # Get masks for both tasks - samples where both CO2 and N2 are valid
+    co2_mask = batch["target_mask"][:, co2_task_id]
+    n2_mask = batch["target_mask"][:, n2_task_id]
+    joint_mask = co2_mask & n2_mask  # Samples with both CO2 and N2 labels
+    
+    if joint_mask.sum() < 2:
+        return None
+    
+    # Get ground truth loadings (arcsinh-transformed) for jointly valid samples
+    arcsinh_q_co2_gt = batch["target"][joint_mask, co2_task_id]
+    arcsinh_q_n2_gt = batch["target"][joint_mask, n2_task_id]
+    
+    # Get CO2 fraction
+    extra_fea = batch["extra_fea"][joint_mask]
+    y_co2 = extra_fea[:, co2_fraction_idx]
+    
+    # Get predictions from heads using pre-computed cls_feats
+    cls_feats = infer["cls_feats"][joint_mask]
+    extra_fea_device = batch["extra_fea"][joint_mask].to(cls_feats.device)
+    
+    # Get CO2 head prediction
+    co2_head = pl_module.downstream_heads[co2_task_id]
+    if hasattr(co2_head, 'langmuir_gate'):
+        arcsinh_q_co2_pred = co2_head(cls_feats, extra_fea_device)
     else:
-        return None
+        arcsinh_q_co2_pred = co2_head(cls_feats).squeeze(-1)
+    
+    # Get N2 head prediction  
+    n2_head = pl_module.downstream_heads[n2_task_id]
+    if hasattr(n2_head, 'langmuir_gate'):
+        arcsinh_q_n2_pred = n2_head(cls_feats, extra_fea_device)
+    else:
+        arcsinh_q_n2_pred = n2_head(cls_feats).squeeze(-1)
     
     # Recover original loading from arcsinh: q = sinh(arcsinh_q)
     q_co2_pred = torch.sinh(arcsinh_q_co2_pred)

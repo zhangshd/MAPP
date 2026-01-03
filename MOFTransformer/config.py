@@ -150,8 +150,10 @@ def test_org_v4():
     tasks = {
         'ArcsinhAbsLoadingCO2': "regression", 
         'ArcsinhAbsLoadingN2': "regression", 
+        'QstCO2': "regression", 
+        'QstN2': "regression", 
     }
-    max_epochs = 2
+    max_epochs = 5
     per_gpu_batchsize = 16
     log_press = False
     use_extra_fea = True  # Use extra features flag
@@ -165,6 +167,9 @@ def test_org_v4():
     langmuir_softplus = True      # Use softplus for non-negative output
     arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
     co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
+    
+    # Selectivity auxiliary loss configuration
+    selectivity_loss_weight = 0.1  # Weight for log-selectivity loss
 
 @ex.named_config
 def ads_qst_co2_n2():
@@ -318,6 +323,37 @@ def ads_co2_n2_org_v4():
     langmuir_softplus = True      # Use softplus for non-negative output
     arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
     co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
+
+@ex.named_config
+def ads_co2_n2_pure_v4():
+    """
+    ExTransformerV4 with Langmuir gating for pure-component CO2/N2 adsorption.
+    Uses arcsinh-transformed pressure. For pure components, CO2Fraction is
+    implicitly 1.0 for CO2 task and 0.0 for N2 task.
+    """
+    exp_name = "ads_co2_n2_pure_v4"
+    model_name = "extranformerv4"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_co2_n2_org'  # Pure component data
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'ArcsinhAbsLoadingCO2': "regression", 
+        'ArcsinhAbsLoadingN2': "regression", 
+    }
+    max_epochs = 50
+    per_gpu_batchsize = 32
+    log_press = False
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]"]  # No CO2Fraction for pure components
+    extra_bins = 32
+    
+    # Langmuir gating configuration
+    langmuir_learnable_b = True   # Whether b parameter is learnable
+    langmuir_b_init = 1.0         # Initial value for b (1/bar)
+    langmuir_softplus = True      # Use softplus for non-negative output
+    arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
+    # Note: co2_fraction_idx not needed for pure component; 
+    # LangmuirGatedRegressionHead will use implicit fraction (1.0 for CO2, 0.0 for N2)
 
 @ex.named_config
 def ads_qst_co2_n2_org_v4():

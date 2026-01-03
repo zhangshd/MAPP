@@ -16,7 +16,7 @@ job_templet = """#!/bin/bash
 #SBATCH --partition=C9654 
 #SBATCH --ntasks-per-node={n_gpus}
 #SBATCH --cpus-per-task=48
-#SBATCH --mem-per-gpu=100G
+#SBATCH --mem-per-gpu=140G
 #SBATCH --gres=gpu:{n_gpus}
 export PATH=/opt/share/miniconda3/envs/mofnn/bin/:$PATH
 export LD_LIBRARY_PATH=/opt/share/miniconda3/envs/mofnn/lib/:$LD_LIBRARY_PATH
@@ -49,13 +49,14 @@ if __name__ == '__main__':
         # "ads_co2_n2_org",
         # "ads_co2_n2_org_v4",
         # "ads_qst_co2_n2_org_v4",
-        "ads_qst_co2_n2_org_v4_sel",
+        # "ads_qst_co2_n2_org_v4_sel",
         # "ads_s_co2_n2_org",
         # "ads_s_qst_co2_n2_org",
         # "ads_co2_n2",
         # "ads_co2_pure",
         # "ads_n2_pure",
         # "ads_co2_n2_pure",
+        "ads_co2_n2_pure_v4",
         # "ads_s_co2_n2_mix"
        
                      ]

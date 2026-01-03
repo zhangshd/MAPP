@@ -1018,9 +1018,6 @@ class ExTransformerV4(nn.Module):
                         arcsinh_pressure_idx=self.arcsinh_pressure_idx,
                         co2_fraction_idx=self.co2_fraction_idx
                     )
-                elif 'QST' in task_upper:
-                    # Isosteric heat of adsorption: use Softplus to ensure positive output
-                    head = heads.RegressionHead(hid_dim, Softplus=True)
                 else:
                     # Other regression tasks: standard linear head
                     head = heads.RegressionHead(hid_dim, Softplus=False)

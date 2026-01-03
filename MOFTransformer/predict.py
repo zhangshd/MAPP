@@ -29,7 +29,7 @@ import yaml
 warnings.filterwarnings(
     "ignore", ".*Trying to infer the `batch_size` from an ambiguous collection.*"
 )
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 def predict(root_dataset, load_path, split='all', save_dir=None, repeat=1, **kwargs):
             
@@ -154,9 +154,33 @@ def main(_config):
                 task_outputs[f'last_layer_fea'] = torch.cat([d[f'{task}_cls_feats'] for d in outputs], dim=0).cpu().numpy().squeeze()
                 task_outputs[f"GroundTruth"] = torch.cat([d[f"{task}_labels"] for d in outputs], dim=0).cpu().numpy().squeeze()
                 task_outputs[f"CifId"] = np.concatenate([d[f"{task}_cif_id"] for d in outputs], axis=0)
-                task_outputs[f"Pressure[bar]"] = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
-                if outputs[0][f"{task}_extra_fea"].shape[1] > 1:  ## for pure-component prediction model, there is only one extra feature
-                    task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,1] for d in outputs], dim=0).cpu().numpy().squeeze()
+                
+                # Handle pressure recovery based on config
+                # For arcsinh pressure: P = sinh(arcsinh_P)
+                # For log pressure: P = 10^(log_P) - eps
+                extra_fea_list = [d[f"{task}_extra_fea"] for d in outputs]
+                extra_fea_dim = extra_fea_list[0].shape[1]
+                condi_cols = model.hparams["config"].get("condi_cols", [])
+                
+                # Determine pressure column and recovery method
+                if len(condi_cols) > 0 and "Arcsinh" in condi_cols[0]:
+                    # Arcsinh pressure: P = sinh(arcsinh_P)
+                    pressure_vals = torch.cat([torch.sinh(d[f"{task}_extra_fea"][:,0]) for d in outputs], dim=0).cpu().numpy().squeeze()
+                else:
+                    # Log pressure: P = 10^(log_P) - eps (legacy format)
+                    pressure_vals = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
+                task_outputs[f"Pressure[bar]"] = pressure_vals
+                
+                # Handle CO2Fraction - index depends on condi_cols
+                # For arcsinh format: [ArcsinhPressure, LogPressure, CO2Fraction] -> index 2
+                # For log format: [Pressure, CO2Fraction] -> index 1
+                co2_fraction_idx = model.hparams["config"].get("co2_fraction_idx", None)
+                if co2_fraction_idx is None:
+                    # Auto-detect based on condi_cols
+                    co2_fraction_idx = 2 if (len(condi_cols) > 2 and "CO2Fraction" in condi_cols[2]) else 1
+                
+                if extra_fea_dim > co2_fraction_idx:
+                    task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,co2_fraction_idx] for d in outputs], dim=0).cpu().numpy().squeeze()
                 elif "CO2" in task:
                     task_outputs[f"CO2Fraction"] = 1
                 elif "N2" in task:
@@ -228,22 +252,23 @@ def load_config_from_dir(model_dir):
 
 if __name__ == "__main__":
 
-    # # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_from_/version_15"
-    # model_dir = Path(__file__).parent/"logs_abs/test_seed42_extranformerv3_from_pmtransformer/version_0"
-    # config = load_config_from_dir(model_dir)
-    # predict(config["root_dataset"], config["load_path"], split="test", 
-    #         **{k: v for k, v in config.items() if k not in ["root_dataset", "load_path", "split"]})
+    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_from_/version_15"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_0"
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    config = load_config_from_dir(model_dir)
+    predict(config["root_dataset"], config["load_path"], split="all", 
+            **{k: v for k, v in config.items() if k not in ["root_dataset", "load_path", "split"]})
 
-    log_dir = Path(__file__).parent/"logs"
-    for model_dir in log_dir.iterdir():
-        if not model_dir.is_dir() or "extranformerv3" not in str(model_dir):
-            continue
-        for version_dir in model_dir.iterdir():
-            if not version_dir.is_dir():
-                continue
-            config = load_config_from_dir(version_dir)
-            if len(list(version_dir.glob("*.npz"))) > 0:
-                continue
-            all_outputs = predict(config["root_dataset"], config["load_path"], split="all", 
-                **{k: v for k, v in config.items() if k not in ["root_dataset", "load_path", "split"]})
+    # log_dir = Path(__file__).parent/"logs"
+    # for model_dir in log_dir.iterdir():
+    #     if not model_dir.is_dir() or ("extranformerv3" not in str(model_dir) and "extranformerv4" not in str(model_dir)):
+    #         continue
+    #     for version_dir in model_dir.iterdir():
+    #         if not version_dir.is_dir():
+    #             continue
+    #         config = load_config_from_dir(version_dir)
+    #         if len(list(version_dir.glob("*.npz"))) > 0:
+    #             continue
+    #         all_outputs = predict(config["root_dataset"], config["load_path"], split="all", 
+    #             **{k: v for k, v in config.items() if k not in ["root_dataset", "load_path", "split"]})
     

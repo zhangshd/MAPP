@@ -19,6 +19,7 @@ from module.module_utils import plot_confusion_matrix, plot_roc_curve, plot_scat
 import numpy as np
 from sklearn.metrics import r2_score, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc, roc_auc_score
+import matplotlib.pyplot as plt
 import os
 import csv
 
@@ -177,7 +178,7 @@ class Module(LightningModule):
             if co2_task and n2_task:
                 co2_fraction_idx = self.hparams["config"].get("co2_fraction_idx", 2)
                 selectivity_loss = objectives.compute_selectivity_loss(
-                    ret, batch, co2_task, n2_task, 
+                    self, batch, infer, co2_task, n2_task, 
                     co2_fraction_idx=co2_fraction_idx
                 )
                 if selectivity_loss is not None:
@@ -328,7 +329,7 @@ class Module(LightningModule):
                     outfile=img_file,
                 )
                 logger_exp.add_figure(f'{task}/{phase}/scatter', fig, self.current_epoch)
-                fig.close()
+                plt.close(fig)
 
             # calculate accuracy when classification
             # if len(preds) > 1 and "classification" in self.current_tasks:
@@ -363,7 +364,7 @@ class Module(LightningModule):
                         outfile=img_file,
                     )
                     logger_exp.add_figure(f'{task}/{phase}/roc_curve', fig, self.current_epoch)
-                    fig.close()
+                    plt.close(fig)
                 else:
                     auc_score = roc_auc_score(
                         np.array(labels), np.array(logits),
@@ -379,7 +380,7 @@ class Module(LightningModule):
                     outfile=img_file,
                 )
                 logger_exp.add_figure(f'{task}/{phase}/confusion_matrix', fig, self.current_epoch)
-                fig.close()
+                plt.close(fig)
         print(f"Best epoch: {self.best_epoch}, Best metric: {self.best_metric}")
         # Note: collections_init is now called in on_validation_epoch_end/on_test_epoch_end
         # to ensure proper clearing regardless of whether best model is saved
