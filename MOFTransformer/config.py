@@ -171,6 +171,11 @@ def test_org_v4():
     # Selectivity auxiliary loss configuration
     selectivity_loss_weight = 0.1  # Weight for log-selectivity loss
 
+    langmuir_learnable_power = True   # enabel learnable power for pressure in langmuir gate (P^n/(1+bP^n))
+    langmuir_power = 1.0              # initial value for power
+    langmuir_power_min = 1.0          # minimum value for power
+    langmuir_power_max = 5.0          # maximum value for power
+
 @ex.named_config
 def ads_qst_co2_n2():
     exp_name = "ads_qst_co2_n2"
@@ -421,6 +426,11 @@ def ads_qst_co2_n2_org_v4_sel():
     
     # Selectivity auxiliary loss configuration
     selectivity_loss_weight = 0.1  # Weight for log-selectivity loss
+
+    langmuir_learnable_power = True   # enabel learnable power for pressure in langmuir gate (P^n/(1+bP^n))
+    langmuir_power = 1.0              # initial value for power
+    langmuir_power_min = 1.0          # minimum value for power
+    langmuir_power_max = 5.0          # maximum value for power
 
 @ex.named_config
 def ads_s_co2_n2_org():

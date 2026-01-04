@@ -1,5 +1,6 @@
 # MOFTransformer version 2.0.0
 import torch.nn as nn
+import torch.nn.functional as F
 import torch
 
 from transformers.models.bert.modeling_bert import (
@@ -274,7 +275,11 @@ class LangmuirGatedRegressionHead(nn.Module):
                  use_softplus_output=True,
                  component='CO2',
                  arcsinh_pressure_idx=0,
-                 co2_fraction_idx=2):
+                 co2_fraction_idx=2,
+                 power=1.0,
+                 learnable_power=False,
+                 power_min=1.0,
+                 power_max=5.0):
         super().__init__()
         self.fc_out = nn.Linear(hid_dim, 1)
         self.use_softplus_output = use_softplus_output
@@ -282,20 +287,42 @@ class LangmuirGatedRegressionHead(nn.Module):
         self.arcsinh_pressure_idx = arcsinh_pressure_idx
         self.co2_fraction_idx = co2_fraction_idx
         self.learnable_b = learnable_b
+        self.learnable_power = learnable_power
+        self.power_min = power_min
+        self.power_max = power_max
         
+        # b parameter: saturation parameter
         if learnable_b:
-            # Learnable saturation parameter, initialized to b_init
             # Using raw parameter + softplus to ensure b > 0
             self.b_raw = nn.Parameter(torch.tensor(float(b_init)))
         else:
             self.register_buffer('b', torch.tensor(float(b_init)))
+        
+        # power parameter: gate steepness (P^n / (1 + b*P^n))
+        if learnable_power:
+            # Map power to [power_min, power_max] using sigmoid
+            # power = power_min + (power_max - power_min) * sigmoid(power_raw)
+            # Initialize power_raw so that sigmoid(power_raw) gives (power - power_min) / (power_max - power_min)
+            init_sigmoid = (power - power_min) / (power_max - power_min + 1e-8)
+            init_sigmoid = max(0.01, min(0.99, init_sigmoid))  # Clip to avoid inf
+            power_raw_init = -torch.log(torch.tensor(1.0 / init_sigmoid - 1.0))
+            self.power_raw = nn.Parameter(power_raw_init)
+        else:
+            self._power = power  # Store as regular attribute
     
     @property
     def b(self):
         """Get b parameter, ensuring it's positive."""
         if self.learnable_b:
-            return torch.nn.functional.softplus(self.b_raw)
+            return F.softplus(self.b_raw)
         return self._buffers['b']
+    
+    @property
+    def power(self):
+        """Get power parameter, constrained to [power_min, power_max]."""
+        if self.learnable_power:
+            return self.power_min + (self.power_max - self.power_min) * torch.sigmoid(self.power_raw)
+        return self._power
     
     def compute_partial_pressure(self, extra_fea):
         """
@@ -328,11 +355,12 @@ class LangmuirGatedRegressionHead(nn.Module):
     
     def langmuir_gate(self, P_partial):
         """
-        Compute Langmuir gate factor: P / (1 + b*P).
+        Compute Langmuir gate factor: P^n / (1 + b*P^n).
         
         Physical properties:
         - P→0: Gate→0 (vacuum limit)
         - P→∞: Gate→1/b (saturation limit)
+        - Higher power (n>1) makes gate steeper at low pressure
         
         Args:
             P_partial: Component partial pressure [B] in bar
@@ -340,7 +368,11 @@ class LangmuirGatedRegressionHead(nn.Module):
             Gate factor [B]
         """
         epsilon = 1e-8  # Numerical stability
-        return P_partial / (1.0 + self.b * P_partial + epsilon)
+        if self.power != 1.0:
+            P_powered = torch.pow(P_partial + epsilon, self.power)
+        else:
+            P_powered = P_partial
+        return P_powered / (1.0 + self.b * P_powered + epsilon)
     
     def forward(self, cls_feats, extra_fea):
         """

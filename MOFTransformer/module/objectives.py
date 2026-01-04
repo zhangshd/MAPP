@@ -209,9 +209,19 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     mae = getattr(pl_module, f"{phase}_{task}_mae")(
         mean_absolute_error(ret[f"{task}_logits"], ret[f"{task}_labels"])
     )
-    mape = getattr(pl_module, f"{phase}_{task}_mape")(
-        mean_absolute_percentage_error(ret[f"{task}_logits"], ret[f"{task}_labels"])
-    )
+    
+    # MAPE with threshold filter: only compute for samples with GT > threshold
+    # This avoids MAPE explosion when GT ≈ 0
+    mape_threshold = pl_module.hparams["config"].get("mape_threshold", 0.01)
+    gt_above_threshold = ret[f"{task}_labels"] > mape_threshold
+    if gt_above_threshold.sum() > 0:
+        mape_value = mean_absolute_percentage_error(
+            ret[f"{task}_logits"][gt_above_threshold], 
+            ret[f"{task}_labels"][gt_above_threshold]
+        )
+    else:
+        mape_value = torch.tensor(0.0)
+    mape = getattr(pl_module, f"{phase}_{task}_mape")(mape_value)
     if ret[f"{task}_labels"].shape[0] > 1:
         r2 = getattr(pl_module, f"{phase}_{task}_r2")(
             r2_score(ret[f"{task}_logits"], ret[f"{task}_labels"])

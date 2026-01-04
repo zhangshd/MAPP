@@ -922,6 +922,10 @@ class ExTransformerV4(nn.Module):
         self.langmuir_learnable_b = config.get("langmuir_learnable_b", True)
         self.langmuir_b_init = config.get("langmuir_b_init", 1.0)
         self.langmuir_softplus = config.get("langmuir_softplus", True)
+        self.langmuir_power = config.get("langmuir_power", 1.0)  # Gate power for steeper response
+        self.langmuir_learnable_power = config.get("langmuir_learnable_power", False)  # Whether power is learnable
+        self.langmuir_power_min = config.get("langmuir_power_min", 1.0)  # Min power value (when learnable)
+        self.langmuir_power_max = config.get("langmuir_power_max", 5.0)  # Max power value (when learnable)
         self.arcsinh_pressure_idx = config.get("arcsinh_pressure_idx", 0)
         self.co2_fraction_idx = config.get("co2_fraction_idx", 2)
         
@@ -1016,7 +1020,11 @@ class ExTransformerV4(nn.Module):
                         use_softplus_output=self.langmuir_softplus,
                         component=component,
                         arcsinh_pressure_idx=self.arcsinh_pressure_idx,
-                        co2_fraction_idx=self.co2_fraction_idx
+                        co2_fraction_idx=self.co2_fraction_idx,
+                        power=self.langmuir_power,
+                        learnable_power=self.langmuir_learnable_power,
+                        power_min=self.langmuir_power_min,
+                        power_max=self.langmuir_power_max
                     )
                 else:
                     # Other regression tasks: standard linear head

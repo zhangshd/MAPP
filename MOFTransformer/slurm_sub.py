@@ -49,14 +49,14 @@ if __name__ == '__main__':
         # "ads_co2_n2_org",
         # "ads_co2_n2_org_v4",
         # "ads_qst_co2_n2_org_v4",
-        # "ads_qst_co2_n2_org_v4_sel",
+        "ads_qst_co2_n2_org_v4_sel",
         # "ads_s_co2_n2_org",
         # "ads_s_qst_co2_n2_org",
         # "ads_co2_n2",
         # "ads_co2_pure",
         # "ads_n2_pure",
         # "ads_co2_n2_pure",
-        "ads_co2_n2_pure_v4",
+        # "ads_co2_n2_pure_v4",
         # "ads_s_co2_n2_mix"
        
                      ]
