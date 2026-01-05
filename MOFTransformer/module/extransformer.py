@@ -928,6 +928,8 @@ class ExTransformerV4(nn.Module):
         self.langmuir_power_max = config.get("langmuir_power_max", 5.0)  # Max power value (when learnable)
         self.arcsinh_pressure_idx = config.get("arcsinh_pressure_idx", 0)
         self.co2_fraction_idx = config.get("co2_fraction_idx", 2)
+        self.langmuir_output_transform = config.get("langmuir_output_transform", "none")  # 'none', 'symlog', 'arcsinh'
+        self.langmuir_symlog_threshold = config.get("langmuir_symlog_threshold", 1e-4)
         
         # graph embedding with_unique_atoms
         self.graph_embeddings = GraphEmbeddings(
@@ -1024,7 +1026,9 @@ class ExTransformerV4(nn.Module):
                         power=self.langmuir_power,
                         learnable_power=self.langmuir_learnable_power,
                         power_min=self.langmuir_power_min,
-                        power_max=self.langmuir_power_max
+                        power_max=self.langmuir_power_max,
+                        output_transform=self.langmuir_output_transform,
+                        symlog_threshold=self.langmuir_symlog_threshold
                     )
                 else:
                     # Other regression tasks: standard linear head

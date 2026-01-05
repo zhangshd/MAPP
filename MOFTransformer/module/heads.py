@@ -9,6 +9,16 @@ from transformers.models.bert.modeling_bert import (
 )
 
 
+def symlog(x, threshold=1e-4):
+    """Symmetric log transform: sign(x) * log10(1 + |x|/threshold)"""
+    return torch.sign(x) * torch.log10(1 + torch.abs(x) / threshold)
+
+
+def symlog_inverse(y, threshold=1e-4):
+    """Inverse of symlog: sign(y) * threshold * (10^|y| - 1)"""
+    return torch.sign(y) * threshold * (torch.pow(10, torch.abs(y)) - 1)
+
+
 class Pooler(nn.Module):
     def __init__(self, hidden_size, index=0):
         super().__init__()
@@ -279,7 +289,9 @@ class LangmuirGatedRegressionHead(nn.Module):
                  power=1.0,
                  learnable_power=False,
                  power_min=1.0,
-                 power_max=5.0):
+                 power_max=5.0,
+                 output_transform='none',
+                 symlog_threshold=1e-4):
         super().__init__()
         self.fc_out = nn.Linear(hid_dim, 1)
         self.use_softplus_output = use_softplus_output
@@ -309,6 +321,10 @@ class LangmuirGatedRegressionHead(nn.Module):
             self.power_raw = nn.Parameter(power_raw_init)
         else:
             self._power = power  # Store as regular attribute
+        
+        # Output transform: 'none', 'symlog', or 'arcsinh'
+        self.output_transform = output_transform.lower()
+        self.symlog_threshold = symlog_threshold
     
     @property
     def b(self):
@@ -395,6 +411,13 @@ class LangmuirGatedRegressionHead(nn.Module):
         
         # Apply Langmuir gate
         gate = self.langmuir_gate(P_partial)  # [B]
-        output = gate * nn_out  # [B]
+        output = gate * nn_out  # [B] - original scale adsorption
+        
+        # Apply output transform to match label scale
+        if self.output_transform == 'symlog':
+            output = symlog(output, self.symlog_threshold)
+        elif self.output_transform == 'arcsinh':
+            output = torch.asinh(output)
+        # 'none' or default: no transform, output is in original scale
         
         return output

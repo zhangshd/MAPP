@@ -148,17 +148,17 @@ def test_org_v4():
     root_dataset = "data/ddmof/mof_split_val10_test10_seed0_org"
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
-        'ArcsinhAbsLoadingCO2': "regression", 
-        'ArcsinhAbsLoadingN2': "regression", 
-        'QstCO2': "regression", 
-        'QstN2': "regression", 
+        'SymlogAbsLoadingCO2': "regression", 
+        'SymlogAbsLoadingN2': "regression", 
+        # 'QstCO2': "regression", 
+        # 'QstN2': "regression", 
     }
     max_epochs = 5
     per_gpu_batchsize = 16
     log_press = False
     use_extra_fea = True  # Use extra features flag
     use_cell_params = False  # Use cell parameters flag
-    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
     extra_bins = 32
     
     # Langmuir gating configuration
@@ -175,6 +175,8 @@ def test_org_v4():
     langmuir_power = 1.0              # initial value for power
     langmuir_power_min = 1.0          # minimum value for power
     langmuir_power_max = 5.0          # maximum value for power
+    langmuir_output_transform = "symlog"  # Output transform to match label scale
+    langmuir_symlog_threshold = 1e-4      # Symlog threshold (must match preprocessing)
 
 @ex.named_config
 def ads_qst_co2_n2():
@@ -303,7 +305,7 @@ def ads_co2_n2_org():
 def ads_co2_n2_org_v4():
     """
     ExTransformerV4 with Langmuir gating for CO2/N2 adsorption prediction.
-    Uses arcsinh-transformed pressure and partial pressure calculation.
+    Uses Symlog-transformed pressure and partial pressure calculation.
     Ensures thermodynamic consistency: q(P=0)=0 and saturation at high P.
     """
     exp_name = "ads_co2_n2_org_v4"
@@ -311,15 +313,15 @@ def ads_co2_n2_org_v4():
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
-        'ArcsinhAbsLoadingCO2': "regression", 
-        'ArcsinhAbsLoadingN2': "regression", 
+        'SymlogAbsLoadingCO2': "regression", 
+        'SymlogAbsLoadingN2': "regression", 
     }
     max_epochs = 50
     per_gpu_batchsize = 32
     log_press = False
     use_extra_fea = True  # Use extra features flag
     use_cell_params = False  # Use cell parameters flag
-    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
     extra_bins = 32
     
     # Langmuir gating configuration
@@ -328,12 +330,19 @@ def ads_co2_n2_org_v4():
     langmuir_softplus = True      # Use softplus for non-negative output
     arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
     co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
+    langmuir_learnable_power = True   # enabel learnable power for pressure in langmuir gate (P^n/(1+bP^n))
+    langmuir_power = 1.0              # initial value for power
+    langmuir_power_min = 1.0          # minimum value for power
+    langmuir_output_transform = "symlog"  # Output transform to match label scale
+    langmuir_symlog_threshold = 1e-4      # Symlog threshold
+
+    selectivity_loss_weight = 0.2  # Weight for log-selectivity loss
 
 @ex.named_config
 def ads_co2_n2_pure_v4():
     """
     ExTransformerV4 with Langmuir gating for pure-component CO2/N2 adsorption.
-    Uses arcsinh-transformed pressure. For pure components, CO2Fraction is
+    Uses symlog-transformed pressure. For pure components, CO2Fraction is
     implicitly 1.0 for CO2 task and 0.0 for N2 task.
     """
     exp_name = "ads_co2_n2_pure_v4"
@@ -341,15 +350,15 @@ def ads_co2_n2_pure_v4():
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_co2_n2_org'  # Pure component data
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
-        'ArcsinhAbsLoadingCO2': "regression", 
-        'ArcsinhAbsLoadingN2': "regression", 
+        'SymlogAbsLoadingCO2': "regression", 
+        'SymlogAbsLoadingN2': "regression", 
     }
     max_epochs = 50
     per_gpu_batchsize = 32
     log_press = False
     use_extra_fea = True  # Use extra features flag
     use_cell_params = False  # Use cell parameters flag
-    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]"]  # No CO2Fraction for pure components
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]"]  # No CO2Fraction for pure components
     extra_bins = 32
     
     # Langmuir gating configuration
@@ -357,8 +366,14 @@ def ads_co2_n2_pure_v4():
     langmuir_b_init = 1.0         # Initial value for b (1/bar)
     langmuir_softplus = True      # Use softplus for non-negative output
     arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
+    langmuir_learnable_power = True   # enabel learnable power for pressure in langmuir gate (P^n/(1+bP^n))
+    langmuir_power = 1.0              # initial value for power
+    langmuir_power_min = 1.0          # minimum value for power
+    langmuir_output_transform = "symlog"  # Output transform to match label scale
+    langmuir_symlog_threshold = 1e-4      # Symlog threshold
     # Note: co2_fraction_idx not needed for pure component; 
     # LangmuirGatedRegressionHead will use implicit fraction (1.0 for CO2, 0.0 for N2)
+
 
 @ex.named_config
 def ads_qst_co2_n2_org_v4():
@@ -404,8 +419,8 @@ def ads_qst_co2_n2_org_v4_sel():
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
-        'ArcsinhAbsLoadingCO2': "regression", 
-        'ArcsinhAbsLoadingN2': "regression", 
+        'SymlogAbsLoadingCO2': "regression", 
+        'SymlogAbsLoadingN2': "regression", 
         'QstCO2': "regression", 
         'QstN2': "regression", 
     }
@@ -414,7 +429,7 @@ def ads_qst_co2_n2_org_v4_sel():
     log_press = False
     use_extra_fea = True
     use_cell_params = False
-    condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
     extra_bins = 32
     
     # Langmuir gating configuration
@@ -431,6 +446,8 @@ def ads_qst_co2_n2_org_v4_sel():
     langmuir_power = 1.0              # initial value for power
     langmuir_power_min = 1.0          # minimum value for power
     langmuir_power_max = 5.0          # maximum value for power
+    langmuir_output_transform = "symlog"  # Output transform to match label scale
+    langmuir_symlog_threshold = 1e-4      # Symlog threshold
 
 @ex.named_config
 def ads_s_co2_n2_org():

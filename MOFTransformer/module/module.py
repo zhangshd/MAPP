@@ -163,8 +163,9 @@ class Module(LightningModule):
 
         # ===================== Selectivity Auxiliary Loss =====================
         # Compute log-selectivity loss if configured and both CO2/N2 loading tasks exist
+        # Skip during inference (when batch has no 'target' key)
         selectivity_weight = self.hparams["config"].get("selectivity_loss_weight", 0.0)
-        if selectivity_weight > 0:
+        if selectivity_weight > 0 and "target" in batch:
             # Find CO2 and N2 loading task names
             co2_task = None
             n2_task = None

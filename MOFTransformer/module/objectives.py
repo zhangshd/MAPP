@@ -17,6 +17,22 @@ def init_weights(module):
         module.bias.data.zero_()
 
 
+def symlog(x, threshold=1e-4):
+    """
+    Symmetric log transform: linear near 0, logarithmic away from 0.
+    Formula: sign(x) * log10(1 + |x|/threshold)
+    """
+    return torch.sign(x) * torch.log10(1 + torch.abs(x) / threshold)
+
+
+def symlog_inverse(y, threshold=1e-4):
+    """
+    Inverse of symlog transform.
+    Formula: sign(y) * threshold * (10^|y| - 1)
+    """
+    return torch.sign(y) * threshold * (torch.pow(10, torch.abs(y)) - 1)
+
+
 def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task, 
                               co2_fraction_idx=2, min_loading=1e-6, eps=1e-8):
     """
@@ -57,9 +73,9 @@ def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task,
     if joint_mask.sum() < 2:
         return None
     
-    # Get ground truth loadings (arcsinh-transformed) for jointly valid samples
-    arcsinh_q_co2_gt = batch["target"][joint_mask, co2_task_id]
-    arcsinh_q_n2_gt = batch["target"][joint_mask, n2_task_id]
+    # Get ground truth loadings (transformed) for jointly valid samples
+    transformed_q_co2_gt = batch["target"][joint_mask, co2_task_id]
+    transformed_q_n2_gt = batch["target"][joint_mask, n2_task_id]
     
     # Get CO2 fraction
     extra_fea = batch["extra_fea"][joint_mask]
@@ -72,22 +88,32 @@ def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task,
     # Get CO2 head prediction
     co2_head = pl_module.downstream_heads[co2_task_id]
     if hasattr(co2_head, 'langmuir_gate'):
-        arcsinh_q_co2_pred = co2_head(cls_feats, extra_fea_device)
+        transformed_q_co2_pred = co2_head(cls_feats, extra_fea_device)
     else:
-        arcsinh_q_co2_pred = co2_head(cls_feats).squeeze(-1)
+        transformed_q_co2_pred = co2_head(cls_feats).squeeze(-1)
     
     # Get N2 head prediction  
     n2_head = pl_module.downstream_heads[n2_task_id]
     if hasattr(n2_head, 'langmuir_gate'):
-        arcsinh_q_n2_pred = n2_head(cls_feats, extra_fea_device)
+        transformed_q_n2_pred = n2_head(cls_feats, extra_fea_device)
     else:
-        arcsinh_q_n2_pred = n2_head(cls_feats).squeeze(-1)
+        transformed_q_n2_pred = n2_head(cls_feats).squeeze(-1)
     
-    # Recover original loading from arcsinh: q = sinh(arcsinh_q)
-    q_co2_pred = torch.sinh(arcsinh_q_co2_pred)
-    q_n2_pred = torch.sinh(arcsinh_q_n2_pred)
-    q_co2_gt = torch.sinh(arcsinh_q_co2_gt)
-    q_n2_gt = torch.sinh(arcsinh_q_n2_gt)
+    # Recover original loading based on transformation type
+    # Detect from task name: "Symlog" or "Arcsinh"
+    if 'SYMLOG' in co2_task.upper():
+        # Symlog transform: use symlog_inverse
+        symlog_threshold = pl_module.hparams["config"].get("symlog_threshold", 0.01)
+        q_co2_pred = symlog_inverse(transformed_q_co2_pred, symlog_threshold)
+        q_n2_pred = symlog_inverse(transformed_q_n2_pred, symlog_threshold)
+        q_co2_gt = symlog_inverse(transformed_q_co2_gt, symlog_threshold)
+        q_n2_gt = symlog_inverse(transformed_q_n2_gt, symlog_threshold)
+    else:
+        # Arcsinh transform: q = sinh(arcsinh_q)
+        q_co2_pred = torch.sinh(transformed_q_co2_pred)
+        q_n2_pred = torch.sinh(transformed_q_n2_pred)
+        q_co2_gt = torch.sinh(transformed_q_co2_gt)
+        q_n2_gt = torch.sinh(transformed_q_n2_gt)
     
     # Create valid mask: exclude samples where:
     # 1. Either loading is too small (division instability)

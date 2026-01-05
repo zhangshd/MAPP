@@ -35,7 +35,7 @@ import inspect
 import shutil
 import faiss
 matplotlib.use('Agg')
-# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 def load_model_from_dir(model_dir):
     
@@ -122,42 +122,83 @@ class InferenceDataset(torch.utils.data.Dataset):
         self.saved_dir = kwargs.get("saved_dir", Path(os.getcwd())/"inference")
         self.clean = kwargs.get("clean", True)
         self.nbr_fea_len = kwargs.get("nbr_fea_len", 64)
-        self.condi_cols = kwargs.get("condi_cols")
-        # print("inputs: ", inputs)
+        self.condi_cols = kwargs.get("condi_cols", [])
+        
+        # Detect pressure format from condi_cols
+        # Arcsinh format: [ArcsinhPressure, LogPressure, CO2Fraction]
+        # Log format: [Pressure, CO2Fraction]
+        self.use_arcsinh = len(self.condi_cols) > 0 and "Arcsinh" in self.condi_cols[0]
+        self.has_co2frac = len(self.condi_cols) > 1 and any("CO2Fraction" in col for col in self.condi_cols)
+        
         if inputs is None:
             assert press is not None, "Please provide pressure."
             if isinstance(press, (float, int)):
                 self.press = [press]
             else:
                 self.press = press
-            if len(self.condi_cols) > 1:
+            
+            if self.has_co2frac:
                 assert co2frac is not None, "Please provide co2frac."
                 if isinstance(co2frac, (float, int)):
                     self.co2frac = [co2frac]
                 else:
                     self.co2frac = co2frac
                     
-            ## inputs is a list of combinations of cif_ids, compositions and pressures
+            ## inputs is a list of combinations of cif_ids, conditions
             inputs = []
+            # Check if second column is SymlogPressure or LogPressure
+            use_symlog_press = len(self.condi_cols) > 1 and "Symlog" in self.condi_cols[1]
+            symlog_threshold = 1e-4  # Default threshold for symlog transform
+            
             for file in self.cif_list:
-                if len(self.condi_cols) > 1:
-                    for press in self.press:
+                for press_val in self.press:
+                    if self.use_arcsinh:
+                        # Format: [ArcsinhPressure, SymlogPressure/LogPressure, CO2Fraction]
+                        arcsinh_press = np.arcsinh(press_val)
+                        if use_symlog_press:
+                            # Symlog pressure: sign(P) * log10(1 + |P|/threshold)
+                            second_press = np.sign(press_val) * np.log10(1 + np.abs(press_val) / symlog_threshold)
+                        else:
+                            # Log pressure
+                            second_press = np.log10(press_val + 1e-5)
+                        if self.has_co2frac:
+                            for frac in self.co2frac:
+                                inputs.append([file.stem, arcsinh_press, second_press, frac])
+                        else:
+                            inputs.append([file.stem, arcsinh_press, second_press])
+                    else:
+                        # Log format: [LogPressure, CO2Fraction]
                         if self.log_press:
-                            press = np.log10(press+1e-5)
-                        for frac in self.co2frac:
-                            inputs.append([file.stem, press, frac])
-                else:
-                    for press in self.press:
-                        if self.log_press:
-                            press = np.log10(press+1e-5)
-                        inputs.append([file.stem, press])
+                            log_press = np.log10(press_val + 1e-5)
+                        else:
+                            log_press = press_val
+                        if self.has_co2frac:
+                            for frac in self.co2frac:
+                                inputs.append([file.stem, log_press, frac])
+                        else:
+                            inputs.append([file.stem, log_press])
             self.inputs = inputs
         else:
             self.inputs = copy.deepcopy(inputs)
             self.cif_ids = list(set([inp[0] for inp in inputs]))
-            if self.log_press:
-                for inp in self.inputs:
-                    inp[1] = np.log10(inp[1]+1e-5)
+            # Check if second column is SymlogPressure or LogPressure
+            use_symlog_press = len(self.condi_cols) > 1 and "Symlog" in self.condi_cols[1]
+            symlog_threshold = 1e-4
+            
+            # Transform pressure in inputs if needed
+            for inp in self.inputs:
+                press_val = inp[1]
+                if self.use_arcsinh:
+                    # Convert to [ArcsinhPressure, SymlogPressure/LogPressure, ...]
+                    arcsinh_press = np.arcsinh(press_val)
+                    if use_symlog_press:
+                        second_press = np.sign(press_val) * np.log10(1 + np.abs(press_val) / symlog_threshold)
+                    else:
+                        second_press = np.log10(press_val + 1e-5)
+                    inp[1] = arcsinh_press
+                    inp.insert(2, second_press)  # Insert second pressure column
+                elif self.log_press:
+                    inp[1] = np.log10(press_val + 1e-5)
 
     def setup(self, stage=None):
         self.graph_files = {}
@@ -445,15 +486,40 @@ def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=N
             task_outputs[f"Predicted"] = torch.cat([d[f"{task}_pred"] for d in outputs], dim=0).cpu().numpy().squeeze()
             task_outputs[f'last_layer_fea'] = torch.cat([d[f'{task}_cls_feats'] for d in outputs], dim=0).cpu().numpy().squeeze()
             task_outputs[f"CifId"] = np.concatenate([d[f"{task}_cif_id"] for d in outputs], axis=0)
-            task_outputs[f"Pressure[bar]"] = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
-            if outputs[0][f"{task}_extra_fea"].shape[1] > 1:
-                task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,1] for d in outputs], dim=0).cpu().numpy().squeeze()
+            
+            # Handle pressure recovery based on config
+            # For arcsinh pressure: P = sinh(arcsinh_P)
+            # For log pressure: P = 10^(log_P) - eps
+            extra_fea_list = [d[f"{task}_extra_fea"] for d in outputs]
+            extra_fea_dim = extra_fea_list[0].shape[1]
+            condi_cols = model.hparams["config"].get("condi_cols", [])
+            
+            # Determine pressure column and recovery method
+            if len(condi_cols) > 0 and "Arcsinh" in condi_cols[0]:
+                # Arcsinh pressure: P = sinh(arcsinh_P)
+                pressure_vals = torch.cat([torch.sinh(d[f"{task}_extra_fea"][:,0]) for d in outputs], dim=0).cpu().numpy().squeeze()
+            else:
+                # Log pressure: P = 10^(log_P) - eps (legacy format)
+                pressure_vals = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
+            task_outputs[f"Pressure[bar]"] = pressure_vals
+            
+            # Handle CO2Fraction - index depends on condi_cols
+            # For arcsinh format: [ArcsinhPressure, LogPressure, CO2Fraction] -> index 2
+            # For log format: [Pressure, CO2Fraction] -> index 1
+            co2_fraction_idx = model.hparams["config"].get("co2_fraction_idx", None)
+            if co2_fraction_idx is None:
+                # Auto-detect based on condi_cols
+                co2_fraction_idx = 2 if (len(condi_cols) > 2 and "CO2Fraction" in condi_cols[2]) else 1
+            
+            if extra_fea_dim > co2_fraction_idx:
+                task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,co2_fraction_idx] for d in outputs], dim=0).cpu().numpy().squeeze()
             elif "CO2" in task:
                 task_outputs[f"CO2Fraction"] = 1
             elif "N2" in task:
                 task_outputs[f"CO2Fraction"] = 0
             else:
                 task_outputs[f"CO2Fraction"] = None
+            
             if "classification" in task_tp:
                 task_outputs[f"PredictedProb"] = torch.cat([d[f"{task}_logits"] for d in outputs], dim=0).cpu().numpy()
             all_outputs[task] = task_outputs
@@ -513,11 +579,13 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_extranformerv2_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv2_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv1p_from_/version_3"
-    model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv3_from_pmtransformer/version_0"
+    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
+
+    model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_0"
     uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
     model_name = model_dir.parent.name + "_" + model_dir.name
     result_dir = Path(os.getcwd())/f"inference/{notes}"
