@@ -29,7 +29,7 @@ import yaml
 warnings.filterwarnings(
     "ignore", ".*Trying to infer the `batch_size` from an ambiguous collection.*"
 )
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 def predict(root_dataset, load_path, split='all', save_dir=None, repeat=1, **kwargs):
             
@@ -254,8 +254,10 @@ if __name__ == "__main__":
 
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_from_/version_15"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_1"
-    model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_0"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
+    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
     config = load_config_from_dir(model_dir)
     predict(config["root_dataset"], config["load_path"], split="all", 
             **{k: v for k, v in config.items() if k not in ["root_dataset", "load_path", "split"]})

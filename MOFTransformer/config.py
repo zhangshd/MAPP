@@ -73,7 +73,7 @@ def config():
 
     # Optimizer Setting
     optim_type = "adamw"  # adamw, adam, sgd (momentum=0.9)
-    learning_rate = 1e-6
+    learning_rate = 1e-4
     weight_decay = 1e-2
     decay_power = (
         1  # default polynomial decay, [cosine, constant, constant_with_warmup]
@@ -82,7 +82,7 @@ def config():
     max_steps = -1  # num_data * max_epoch // batch_size (accumulate_grad_batches)
     warmup_steps = 0.05  # int or float ( max_steps * warmup_steps)
     end_lr = 0
-    lr_mult = 100  # multiply lr for downstream heads
+    lr_mult = 0  # multiply lr for pretrained model
 
     # PL Trainer Setting
     resume_from = None
@@ -120,13 +120,13 @@ def config():
 @ex.named_config
 def test():
     exp_name = "test"
+    model_name = "extranformerv3"
     tasks = {
-        'logAdsCO2': "regression", 
-        'logAdsN2': "regression", 
-        # 'QstCO2': "regression", 
-        # 'QstN2': "regression", 
+        'LogAbsLoadingCO2': "regression", 
+        'LogAbsLoadingN2': "regression", 
+        'LogAbsLoadingS': "regression",
     }
-    root_dataset = "data/ddmof/mof_split_val10_test10_seed0"
+    root_dataset = "data/ddmof/mof_split_val10_test10_seed0_org"
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     max_epochs = 2
     # batch_size = 16
@@ -285,13 +285,14 @@ def ads_s_co2_n2():
     extra_bins=32
 
 @ex.named_config
-def ads_co2_n2_org():
-    exp_name = "ads_co2_n2_org"
+def ads_s_co2_n2_abs():
+    exp_name = "ads_s_co2_n2_abs"
     root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
-        'ArcsinhAbsLoadingCO2': "regression", 
-        'ArcsinhAbsLoadingN2': "regression", 
+        'LogAbsLoadingCO2': "regression", 
+        'LogAbsLoadingN2': "regression", 
+        'LogAbsLoadingS': "regression",
     }
     max_epochs = 50
     per_gpu_batchsize = 32
@@ -299,6 +300,23 @@ def ads_co2_n2_org():
     use_extra_fea = True  # Use extra features flag
     use_cell_params = False  # Use cell parameters flag
     condi_cols = ["ArcsinhPressure[bar]", "LogPressure[bar]", "CO2Fraction"]
+    extra_bins=32
+
+@ex.named_config
+def ads_co2_n2_org():
+    exp_name = "ads_co2_n2_org"
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
+    tasks = {
+        'LogAbsLoadingCO2': "regression", 
+        'LogAbsLoadingN2': "regression", 
+    }
+    max_epochs = 20
+    per_gpu_batchsize = 32
+    log_press = False
+    use_extra_fea = True  # Use extra features flag
+    use_cell_params = False  # Use cell parameters flag
+    condi_cols = ["Pressure[bar]", "CO2Fraction"]
     extra_bins=32
 
 @ex.named_config
@@ -310,7 +328,8 @@ def ads_co2_n2_org_v4():
     """
     exp_name = "ads_co2_n2_org_v4"
     model_name = "extranformerv4"
-    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    # root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    root_dataset = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org' # GCluster
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
         'SymlogAbsLoadingCO2': "regression", 
@@ -336,7 +355,7 @@ def ads_co2_n2_org_v4():
     langmuir_output_transform = "symlog"  # Output transform to match label scale
     langmuir_symlog_threshold = 1e-4      # Symlog threshold
 
-    selectivity_loss_weight = 0.2  # Weight for log-selectivity loss
+    selectivity_loss_weight = 0.1  # Weight for log-selectivity loss
 
 @ex.named_config
 def ads_co2_n2_pure_v4():
@@ -416,7 +435,8 @@ def ads_qst_co2_n2_org_v4_sel():
     """
     exp_name = "ads_qst_co2_n2_org_v4_sel"
     model_name = "extranformerv4"
-    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    # root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # GMOF
+    root_dataset = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org' # GCluster
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
         'SymlogAbsLoadingCO2': "regression", 

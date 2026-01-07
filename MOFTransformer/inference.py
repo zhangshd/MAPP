@@ -35,7 +35,7 @@ import inspect
 import shutil
 import faiss
 matplotlib.use('Agg')
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 def load_model_from_dir(model_dir):
     
@@ -550,6 +550,7 @@ def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=N
         df_res = df_res.reindex(columns=out_cols)
         df_res.to_csv(saved_dir/f"{task}_predictions_{model_name}.csv", index=False)
         # np.savez(saved_dir/f"{task}_last_layer_fea.npz", task_outputs["last_layer_fea"])
+        print(f"Saved predictions for task {task} to {saved_dir/f'{task}_predictions_{model_name}.csv'}")
         all_outputs[task] = task_outputs
         
     
@@ -584,15 +585,23 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
-
-    model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_0"
-    uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
+    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
+    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_4"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"
+    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_1"
+    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_2"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_1"
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    # uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
+    uncertainty_trees_file = None
     model_name = model_dir.parent.name + "_" + model_dir.name
     result_dir = Path(os.getcwd())/f"inference/{notes}"
     result_dir.mkdir(exist_ok=True, parents=True)
-    co2frac = [0, 
-               0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
-               ]
+    # co2frac = [0, 
+    #            0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+    #            ]
+    co2frac = None
     press = [
         0.0001,
         0.001,
