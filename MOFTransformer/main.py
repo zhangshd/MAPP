@@ -9,7 +9,7 @@ from run import ex
 from config import *
 import copy
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 import argparse
 

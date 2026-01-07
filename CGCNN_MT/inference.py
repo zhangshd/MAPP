@@ -91,14 +91,39 @@ class InferenceDataset(Dataset):
         else:
             self.press = press
 
-        ## inputs is a list of combinations of cif_ids, compositions and pressures
+        self.condi_cols = kwargs.get("condi_cols", [])
+        self.symlog_threshold = kwargs.get("symlog_threshold", 1e-4)
+        
+        # Detect pressure format from condi_cols
+        self.use_arcsinh = len(self.condi_cols) > 0 and "Arcsinh" in self.condi_cols[0]
+        self.has_co2frac = len(self.condi_cols) > 1 and any("CO2Fraction" in col for col in self.condi_cols)
+
+        ## inputs is a list of combinations of cif_ids, conditions
         inputs = []
+        use_symlog_press = len(self.condi_cols) > 1 and "Symlog" in self.condi_cols[1]
+        
         for file in self.cif_list:
-            for frac in self.co2frac:
-                for press in self.press:
+            for press in self.press:
+                if self.use_arcsinh:
+                    # Format: [ArcsinhPressure, SymlogPressure/LogPressure, CO2Fraction]
+                    arcsinh_press = np.arcsinh(press)
+                    if use_symlog_press:
+                        second_press = np.sign(press) * np.log10(1 + np.abs(press) / self.symlog_threshold)
+                    else:
+                        second_press = np.log10(press + 1e-5)
+                    if self.has_co2frac:
+                        for frac in self.co2frac:
+                            inputs.append([file.stem, arcsinh_press, second_press, frac])
+                    else:
+                        inputs.append([file.stem, arcsinh_press, second_press])
+                else:
+                    # Legacy log format: [LogPressure, CO2Fraction]
                     if self.log_press:
-                        press = np.log10(press+1e-5)
-                    inputs.append([file.stem, press, frac])
+                        log_press = np.log10(press + 1e-5)
+                    else:
+                        log_press = press
+                    for frac in self.co2frac:
+                        inputs.append([file.stem, log_press, frac])
         self.inputs = inputs
     
     def append(self, new_data: Dataset):
@@ -211,8 +236,29 @@ def inference(cif_list, co2frac, press, model_dir, saved_dir, **kwargs):
     outputs = trainer.predict(model, infer_loader)
     all_outputs = {}
     all_outputs[f"CifId"] = [d["cif_id"] for d in infer_dataset]
-    all_outputs["Pressure[bar]"] = [10**(d["extra_fea"][0].item()) - 1e-5 for d in infer_dataset]
-    all_outputs["CO2Fraction"] = [d["extra_fea"][1].item() for d in infer_dataset]
+    
+    # Pressure recovery based on condi_cols
+    condi_cols = model.hparams.get("condi_cols", [])
+    if len(condi_cols) > 0 and "Arcsinh" in condi_cols[0]:
+        # Arcsinh format: P = sinh(arcsinh_P)
+        all_outputs["Pressure[bar]"] = [np.sinh(d["extra_fea"][0].item()) for d in infer_dataset]
+    else:
+        # Legacy log format: P = 10^(log_P) - eps
+        all_outputs["Pressure[bar]"] = [10**(d["extra_fea"][0].item()) - 1e-5 for d in infer_dataset]
+    
+    # CO2Fraction recovery
+    if len(condi_cols) > 2 and "CO2Fraction" in condi_cols[2]:
+        co2_frac_idx = 2
+    elif len(condi_cols) > 1 and "CO2Fraction" in condi_cols[1]:
+        co2_frac_idx = 1
+    else:
+        co2_frac_idx = 1  # Default
+    
+    if infer_dataset.has_co2frac:
+        all_outputs["CO2Fraction"] = [d["extra_fea"][co2_frac_idx].item() for d in infer_dataset]
+    else:
+        all_outputs["CO2Fraction"] = [1.0 if "CO2" in model.hparams.get("tasks", [])[0] else 0.0 for d in infer_dataset]
+    
     for task in model.hparams.get("tasks"):
         task_id = model.hparams["tasks"].index(task)
         task_tp = model.hparams["task_types"][task_id]

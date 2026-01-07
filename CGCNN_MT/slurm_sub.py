@@ -19,8 +19,8 @@ job_templet = """#!/bin/bash
 #SBATCH --mem-per-gpu=200G
 #SBATCH --nodelist=c3
 #SBATCH --gres=gpu:{n_gpus}
-export PATH=/opt/share/miniconda3/envs/mofmthnn/bin:$PATH
-export LD_LIBRARY_PATH=/opt/share/miniconda3/envs/mofmthnn/lib:$LD_LIBRARY_PATH
+export PATH=/opt/share/miniconda3/envs/mofnn/bin:$PATH
+export LD_LIBRARY_PATH=/opt/share/miniconda3/envs/mofnn/lib:$LD_LIBRARY_PATH
 
 srun python -u {py_executor} --progress_bar --task_cfg {task_config} --model_cfg {model_config}
 """.strip()
@@ -46,7 +46,8 @@ if __name__ == '__main__':
         # "ads_s_qst_co2_n2",
         # "ads_qst_co2_n2",
         # "ads_co2_n2",
-        "ads_s_co2_n2",
+        # "ads_s_co2_n2",
+        "ads_symlog_co2_n2",
         # "ads_co2",
         # "ads_n2",
         # "qst_co2",

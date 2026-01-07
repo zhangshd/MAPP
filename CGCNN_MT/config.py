@@ -282,3 +282,80 @@ def ads_qst_co2_n2_test():
     log_press = True
 
 
+# ============ Symlog Transformed Adsorption Configurations ============
+
+@ex.named_config
+def ads_symlog_co2_n2():
+    """Symlog-transformed CO2/N2 mixture adsorption prediction"""
+    exp_name = "ads_symlog_co2_n2"
+    data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_org' # GMOF
+    # data_dir = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org'  # GCluster
+    data_dir = str(Path(__file__).parent/data_dir)
+    batch_size = 32
+    lr = 1e-4
+    loss_aggregation = 'sum'
+    tasks = ['SymlogAbsLoadingCO2', 'SymlogAbsLoadingN2']
+    task_types = ['regression', 'regression']
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
+    log_press = False  # 压力已在数据中预处理
+    symlog_threshold = 1e-4  # Symlog变换阈值
+
+@ex.named_config
+def ads_symlog_co2_n2_pure():
+    """Symlog-transformed pure component adsorption prediction"""
+    exp_name = "ads_symlog_co2_n2_pure"
+    data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_co2_n2_org'
+    data_dir = str(Path(__file__).parent/data_dir)
+    batch_size = 32
+    lr = 1e-4
+    loss_aggregation = 'sum'
+    tasks = ['SymlogAbsLoadingCO2', 'SymlogAbsLoadingN2']
+    task_types = ['regression', 'regression']
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]"]  # No CO2Fraction for pure components
+    log_press = False
+    symlog_threshold = 1e-4
+
+@ex.named_config
+def ads_symlog_qst_co2_n2():
+    """Symlog-transformed adsorption + Qst prediction"""
+    exp_name = "ads_symlog_qst_co2_n2"
+    data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_org'
+    data_dir = str(Path(__file__).parent/data_dir)
+    batch_size = 32
+    lr = 1e-4
+    loss_aggregation = 'sum'
+    tasks = ['SymlogAbsLoadingCO2', 'SymlogAbsLoadingN2', 'QstCO2', 'QstN2']
+    task_types = ['regression', 'regression', 'regression', 'regression']
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
+    log_press = False
+    symlog_threshold = 1e-4
+    selectivity_loss_weight = 0.0  # Optional: enable selectivity loss
+
+@ex.named_config
+def test_symlog():
+    """
+    Test config for Symlog-transformed adsorption prediction.
+    Uses small dataset for quick validation.
+    """
+    exp_name = "test_symlog"
+    data_dir = 'data/ddmof/mof_split_val10_test10_seed0_org'
+    data_dir = str(Path(__file__).parent/data_dir)
+    batch_size = 16
+    max_epochs = 5
+    lr = 1e-4
+    loss_aggregation = 'sum'
+    tasks = ['SymlogAbsLoadingCO2', 'SymlogAbsLoadingN2']
+    task_types = ['regression', 'regression']
+    condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
+    log_press = False
+    use_extra_fea = True
+    use_cell_params = False
+    
+    # Symlog configuration
+    symlog_threshold = 1e-4
+    
+    # Selectivity auxiliary loss
+    selectivity_loss_weight = 0.0
+    
+    # MAPE threshold
+    mape_threshold = 0.01

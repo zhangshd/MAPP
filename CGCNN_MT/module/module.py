@@ -33,6 +33,116 @@ from transformers import (
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pymatgen.io.cif")
 
+
+# ============ Symlog Transform Functions ============
+def symlog(x, threshold=1e-4):
+    """
+    Symmetric log transform: sign(x) * log10(1 + |x|/threshold)
+    Used for adsorption values in labels.
+    """
+    return np.sign(x) * np.log10(1 + np.abs(x) / threshold)
+
+
+def symlog_inverse(y, threshold=1e-4):
+    """
+    Inverse of symlog transform: sign(y) * threshold * (10^|y| - 1)
+    Used to recover original adsorption values from predictions.
+    """
+    return np.sign(y) * threshold * (10 ** np.abs(y) - 1)
+
+
+def symlog_inverse_torch(y, threshold=1e-4):
+    """Torch version of symlog_inverse for loss computation."""
+    import torch
+    return torch.sign(y) * threshold * (torch.pow(10, torch.abs(y)) - 1)
+
+
+def compute_selectivity_loss(outputs, targets, mask, tasks, task_types, symlog_threshold=1e-4, 
+                             min_loading=0.01, eps=1e-8):
+    """
+    Compute selectivity auxiliary loss: MSE on log-selectivity.
+    log_S = log(q_CO2/q_N2) - log(y_CO2/y_N2)
+    
+    Args:
+        outputs: List of model outputs (one per task)
+        targets: Target tensor [B, num_tasks]
+        mask: Mask tensor [B, num_tasks]
+        tasks: List of task names
+        task_types: List of task types
+        symlog_threshold: Threshold for symlog inverse
+        min_loading: Minimum loading for valid selectivity
+        eps: Small constant for numerical stability
+    
+    Returns:
+        Selectivity loss tensor, or None if not enough valid samples
+    """
+    import torch
+    
+    # Find CO2 and N2 loading task indices
+    co2_idx = n2_idx = None
+    for i, task in enumerate(tasks):
+        task_upper = task.upper()
+        if 'LOADING' in task_upper or 'ADS' in task_upper:
+            if 'CO2' in task_upper:
+                co2_idx = i
+            elif 'N2' in task_upper:
+                n2_idx = i
+    
+    if co2_idx is None or n2_idx is None:
+        return None
+    
+    # Get joint mask: samples with both CO2 and N2 valid
+    joint_mask = mask[:, co2_idx] & mask[:, n2_idx]
+    if joint_mask.sum() < 2:
+        return None
+    
+    # Get predictions and ground truth
+    q_co2_pred_raw = outputs[co2_idx]["output"][joint_mask].squeeze(-1)
+    q_n2_pred_raw = outputs[n2_idx]["output"][joint_mask].squeeze(-1)
+    q_co2_gt_raw = targets[joint_mask, co2_idx]
+    q_n2_gt_raw = targets[joint_mask, n2_idx]
+    
+    # Detect transformation type from task name
+    task_name = tasks[co2_idx].upper()
+    if 'SYMLOG' in task_name:
+        # Symlog transform: use inverse
+        q_co2_pred = symlog_inverse_torch(q_co2_pred_raw, symlog_threshold)
+        q_n2_pred = symlog_inverse_torch(q_n2_pred_raw, symlog_threshold)
+        q_co2_gt = symlog_inverse_torch(q_co2_gt_raw, symlog_threshold)
+        q_n2_gt = symlog_inverse_torch(q_n2_gt_raw, symlog_threshold)
+    elif 'LOG' in task_name:
+        # Log transform: q = 10^log_q
+        q_co2_pred = torch.pow(10, q_co2_pred_raw)
+        q_n2_pred = torch.pow(10, q_n2_pred_raw)
+        q_co2_gt = torch.pow(10, q_co2_gt_raw)
+        q_n2_gt = torch.pow(10, q_n2_gt_raw)
+    else:
+        # Arcsinh transform: q = sinh(arcsinh_q)
+        q_co2_pred = torch.sinh(q_co2_pred_raw)
+        q_n2_pred = torch.sinh(q_n2_pred_raw)
+        q_co2_gt = torch.sinh(q_co2_gt_raw)
+        q_n2_gt = torch.sinh(q_n2_gt_raw)
+    
+    # Valid mask: exclude samples with too small loadings
+    valid_mask = (
+        (q_co2_gt > min_loading) & 
+        (q_n2_gt > min_loading) &
+        (q_co2_pred > min_loading) &
+        (q_n2_pred > min_loading)
+    )
+    
+    if valid_mask.sum() < 2:
+        return None
+    
+    # Compute log-selectivity
+    log_S_pred = torch.log(q_co2_pred[valid_mask] + eps) - torch.log(q_n2_pred[valid_mask] + eps)
+    log_S_gt = torch.log(q_co2_gt[valid_mask] + eps) - torch.log(q_n2_gt[valid_mask] + eps)
+    
+    # MSE loss
+    selectivity_loss = torch.nn.functional.mse_loss(log_S_pred, log_S_gt)
+    return selectivity_loss
+
+
 class MInterface(pl.LightningModule):
     def __init__(self, model: nn.Module, normalizers, **kwargs):
         super().__init__()
@@ -68,7 +178,7 @@ class MInterface(pl.LightningModule):
 
         self.collections_init(split='val')
         self.collections_init(split='test')
-        self.best_metric = 0.0
+        self.best_metric = -1e10
         self.best_epoch = 0
         self.best_model_path = None
         
@@ -294,6 +404,20 @@ class MInterface(pl.LightningModule):
         #             self.log(f'{task}/{split}_loss_weight', self.dwaloss.weights[i], 
         #                     prog_bar=False, on_step=True, on_epoch=True, 
         #                     sync_dist=True, batch_size=self.hparams.batch_size)
+
+        # Selectivity auxiliary loss (if enabled)
+        selectivity_loss_weight = self.hparams.get('selectivity_loss_weight', 0.0)
+        if selectivity_loss_weight > 0 and split == 'train':
+            sel_loss = compute_selectivity_loss(
+                outputs, targets, mask, 
+                self.hparams.tasks, self.hparams.task_types,
+                symlog_threshold=self.hparams.get('symlog_threshold', 1e-4)
+            )
+            if sel_loss is not None:
+                loss += selectivity_loss_weight * sel_loss
+                self.log(f'{split}_selectivity_loss', sel_loss, 
+                         prog_bar=False, on_step=True, on_epoch=True, 
+                         sync_dist=True, batch_size=self.hparams.batch_size)
 
         self.log(f'{split}_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=self.hparams.batch_size)
         if split == 'val':
@@ -538,15 +662,27 @@ class MInterface(pl.LightningModule):
             if len(preds[task_id]) == 0:
                 continue
             if "regression" in self.hparams.task_types[task_id]:
-                r2 = r2_score(np.array(labels[task_id]), np.array(preds[task_id]))
-                mae = mean_absolute_error(np.array(labels[task_id]), np.array(preds[task_id]))
+                labels_arr = np.array(labels[task_id])
+                preds_arr = np.array(preds[task_id])
                 
-                ## use R2 score as the main metric for regression tasks
-                metric = r2
+                r2 = r2_score(labels_arr, preds_arr)
+                mae = mean_absolute_error(labels_arr, preds_arr)
+                
+                # MAPE with threshold filtering to avoid explosion when GT ≈ 0
+                mape_threshold = self.hparams.get('mape_threshold', 0.01)
+                valid_mask = np.abs(labels_arr) > mape_threshold
+                if valid_mask.sum() > 0:
+                    mape = np.mean(np.abs((labels_arr[valid_mask] - preds_arr[valid_mask]) / labels_arr[valid_mask])) * 100
+                else:
+                    mape = 0.0
+                
+                ## use mae as the main metric for regression tasks
+                metric = -mae
 
                 all_metrics.update({
                     f"{task}/{split}_R2Score": r2,
                     f"{task}/{split}_MeanAbsoluteError": mae,
+                    f"{task}/{split}_MAPE": mape,
                                     })
                 if split == 'test':
                     self.log_regression_results(labels, preds, cifids, split, task_id, r2, mae)
