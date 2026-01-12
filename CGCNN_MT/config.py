@@ -136,6 +136,33 @@ def att_cgcnn():
     att_S = 64  # S parameter of external attention
 
 @ex.named_config
+def cgcnn_langmuir():
+    """CGCNN with Langmuir-gated heads for adsorption tasks."""
+    model_name = 'cgcnn_langmuir'
+    atom_fea_len = 64
+    extra_fea_len = 128
+    h_fea_len = 128
+    n_conv = 3
+    n_h = 1
+    dropout_prob = 0.0
+    use_extra_fea = True
+    use_cell_params = False
+    atom_layer_norm = False
+    
+    # Langmuir gating configuration
+    langmuir_learnable_b = True
+    langmuir_b_init = 1.0
+    langmuir_softplus = True
+    langmuir_power = 1.0
+    langmuir_learnable_power = True
+    langmuir_power_min = 1.0
+    langmuir_power_max = 5.0
+    langmuir_output_transform = "symlog"
+    langmuir_symlog_threshold = 1e-4
+    arcsinh_pressure_idx = 0
+    co2_fraction_idx = 2
+
+@ex.named_config
 def cgcnn_uni_atom():
     model_name = 'cgcnn_uni_atom'  # Model name
     atom_fea_len = 64  # Atom feature length
@@ -297,8 +324,10 @@ def ads_symlog_co2_n2():
     tasks = ['SymlogAbsLoadingCO2', 'SymlogAbsLoadingN2']
     task_types = ['regression', 'regression']
     condi_cols = ["ArcsinhPressure[bar]", "SymlogPressure[bar]", "CO2Fraction"]
-    log_press = False  # 压力已在数据中预处理
-    symlog_threshold = 1e-4  # Symlog变换阈值
+    log_press = False  # the pressure column is already transformed
+    symlog_threshold = 1e-4  # Symlog transformation threshold
+    # Selectivity auxiliary loss
+    selectivity_loss_weight = 0.0
 
 @ex.named_config
 def ads_symlog_co2_n2_pure():

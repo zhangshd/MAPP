@@ -13,6 +13,7 @@ from CGCNN_MT.module.att_cgcnn import CrystalGraphConvNet as AttCGCNN
 from CGCNN_MT.module.cgcnn import CrystalGraphConvNet as CGCNN
 from CGCNN_MT.module.cgcnn_raw import CrystalGraphConvNet as CGCNNRaw
 from CGCNN_MT.module.cgcnn_uni_atom import CrystalGraphConvNet as CGCNNUniAtom
+from CGCNN_MT.module.cgcnn_langmuir import CrystalGraphConvNetLangmuir as CGCNNLangmuir
 from CGCNN_MT.datamodule.dataset import LoadGraphData, LoadGraphDataWithAtomicNumber
 import pytorch_lightning.callbacks as plc
 import pytorch_lightning as pl
@@ -28,6 +29,7 @@ MODEL_NAME_TO_DATASET_CLS = {
         "cgcnn": LoadGraphData,
         "cgcnn_raw": LoadGraphData,
         "cgcnn_uni_atom": LoadGraphDataWithAtomicNumber,
+        "cgcnn_langmuir": LoadGraphData,
     }
 
 MODEL_NAME_TO_MODULE_CLS = {
@@ -35,6 +37,7 @@ MODEL_NAME_TO_MODULE_CLS = {
         "cgcnn": CGCNN,
         "cgcnn_raw": CGCNNRaw,
         "cgcnn_uni_atom": CGCNNUniAtom,
+        "cgcnn_langmuir": CGCNNLangmuir,
     }
 
 def load_callbacks(patience=10, min_delta=0.0, monitor='val_loss', mode='min', lr_scheduler=None):

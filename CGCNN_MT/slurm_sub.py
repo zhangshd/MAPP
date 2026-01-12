@@ -56,7 +56,8 @@ if __name__ == '__main__':
                      ]
     model_configs = [
         # "att_cgcnn",
-        "cgcnn",
+        # "cgcnn",
+        "cgcnn_langmuir",
         # "cgcnn_raw",
         # "fcnn",
         # "att_fcnn",

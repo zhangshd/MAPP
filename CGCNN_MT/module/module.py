@@ -331,10 +331,19 @@ class MInterface(pl.LightningModule):
             cifids_i = np.array(cifids)[mask_i.tolist()]
             
             output_i_prob = torch.exp(torch.clamp(output_i, min=-20, max=20))
+            
+            # Check if this is a Langmuir head task (skip normalize/denormalize)
+            is_langmuir_task = hasattr(self.model, 'langmuir_task_indices') and task_id in self.model.langmuir_task_indices
+            
             if "classification" in self.hparams.task_types[task_id]:
                 target_i_normed = target_i.squeeze(-1).long()
                 target_i = target_i.squeeze(-1).long()
                 output_i_denorm = torch.argmax(output_i, dim=1)
+            elif is_langmuir_task:
+                # Langmuir head: output is already in label scale (symlog-transformed)
+                # Skip normalize/denormalize to avoid bottom plateau issue
+                target_i_normed = target_i  # Labels are already symlog-transformed
+                output_i_denorm = output_i  # Output is already symlog-transformed
             else:
                 target_i_normed = self.normalize(target_i, task_id)
                 output_i_denorm = self.denormalize(output_i, task_id)
