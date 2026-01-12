@@ -58,8 +58,39 @@ def main(model_dir, split='test', result_dir=None):
         task_outputs[f'last_layer_fea'] = torch.cat([d[f'{task}_last_layer_fea'] for d in outputs], dim=0).cpu().numpy().squeeze()
         task_outputs[f"GroundTruth"] = torch.cat([d[f"{task}_labels"] for d in outputs], dim=0).cpu().numpy().squeeze()
         task_outputs[f"CifId"] = np.concatenate([d[f"{task}_cif_id"] for d in outputs], axis=0)
-        task_outputs[f"Pressure[bar]"] = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
-        task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,1] for d in outputs], dim=0).cpu().numpy().squeeze()
+        
+        # Handle pressure recovery based on config
+        # For arcsinh pressure: P = sinh(arcsinh_P)
+        # For log pressure: P = 10^(log_P) - eps
+        extra_fea_list = [d[f"{task}_extra_fea"] for d in outputs]
+        extra_fea_dim = extra_fea_list[0].shape[1]
+        condi_cols = hparams.get("condi_cols", [])
+        
+        # Determine pressure column and recovery method
+        if len(condi_cols) > 0 and "Arcsinh" in condi_cols[0]:
+            # Arcsinh pressure: P = sinh(arcsinh_P)
+            pressure_vals = torch.cat([torch.sinh(d[f"{task}_extra_fea"][:,0]) for d in outputs], dim=0).cpu().numpy().squeeze()
+        else:
+            # Log pressure: P = 10^(log_P) - eps (legacy format)
+            pressure_vals = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
+        task_outputs[f"Pressure[bar]"] = pressure_vals
+        
+        # Handle CO2Fraction - index depends on condi_cols
+        # For arcsinh format: [ArcsinhPressure, SymlogPressure, CO2Fraction] -> index 2
+        # For log format: [Pressure, CO2Fraction] -> index 1
+        co2_fraction_idx = hparams.get("co2_fraction_idx", None)
+        if co2_fraction_idx is None:
+            # Auto-detect based on condi_cols
+            co2_fraction_idx = 2 if (len(condi_cols) > 2 and "CO2Fraction" in condi_cols[2]) else 1
+        
+        if extra_fea_dim > co2_fraction_idx:
+            task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,co2_fraction_idx] for d in outputs], dim=0).cpu().numpy().squeeze()
+        elif "CO2" in task:
+            task_outputs[f"CO2Fraction"] = 1
+        elif "N2" in task:
+            task_outputs[f"CO2Fraction"] = 0
+        else:
+            task_outputs[f"CO2Fraction"] = None
         if "classification" in task_tp:
             task_outputs[f"PredictedProb"] = torch.cat([d[f"{task}_logits"] for d in outputs], dim=0).cpu().numpy()
         # for k, v in task_outputs.items():
@@ -192,5 +223,6 @@ if __name__ == '__main__':
 
     # args = parser.parse_args()
     # main(args.model_dir)
-    model_dir = "/home/zhangsd/repos/CF-BGAP/CGCNN_MT/logs/logAdsCO2_logAdsN2_logAdsS_seed42_cgcnn/version_11"
+    model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_5"  ## GMOF
+    # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_7"  ## GCluster
     main(model_dir)

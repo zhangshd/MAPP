@@ -498,6 +498,10 @@ def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=N
             if len(condi_cols) > 0 and "Arcsinh" in condi_cols[0]:
                 # Arcsinh pressure: P = sinh(arcsinh_P)
                 pressure_vals = torch.cat([torch.sinh(d[f"{task}_extra_fea"][:,0]) for d in outputs], dim=0).cpu().numpy().squeeze()
+            elif len(condi_cols) > 0 and "Symlog" in condi_cols[0]:
+                # Symlog pressure: P = sign(P_symlog) * threshold * (10^(|P_symlog|) - 1)
+                symlog_threshold = 1e-4  # Default threshold for symlog transform
+                pressure_vals = torch.cat([torch.sign(d[f"{task}_extra_fea"][:,0]) * symlog_threshold * (10**(torch.abs(d[f"{task}_extra_fea"][:,0])) - 1) for d in outputs], dim=0).cpu().numpy().squeeze()
             else:
                 # Log pressure: P = 10^(log_P) - eps (legacy format)
                 pressure_vals = torch.cat([10**(d[f"{task}_extra_fea"][:,0]) - 1e-5 for d in outputs], dim=0).cpu().numpy().squeeze()
@@ -585,23 +589,23 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
+    model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_4"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_1"
-    model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
     # uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
     uncertainty_trees_file = None
     model_name = model_dir.parent.name + "_" + model_dir.name
     result_dir = Path(os.getcwd())/f"inference/{notes}"
     result_dir.mkdir(exist_ok=True, parents=True)
-    # co2frac = [0, 
-    #            0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
-    #            ]
-    co2frac = None
+    co2frac = [0, 
+               0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+               ]
+    # co2frac = None
     press = [
         0.0001,
         0.001,

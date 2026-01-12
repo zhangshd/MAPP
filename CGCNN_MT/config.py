@@ -288,8 +288,8 @@ def ads_qst_co2_n2_test():
 def ads_symlog_co2_n2():
     """Symlog-transformed CO2/N2 mixture adsorption prediction"""
     exp_name = "ads_symlog_co2_n2"
-    data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_org' # GMOF
-    # data_dir = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org'  # GCluster
+    # data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_org' # GMOF
+    data_dir = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org'  # GCluster
     data_dir = str(Path(__file__).parent/data_dir)
     batch_size = 32
     lr = 1e-4

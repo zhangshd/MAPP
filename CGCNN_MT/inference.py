@@ -304,7 +304,9 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/AdsCO2_AdsN2_QstCO2_QstN2_seed42_cgcnn/version_2"
     # model_dir = Path(__file__).parent/"logs/AdsCO2_AdsN2_seed42_cgcnn/version_5"
     # model_dir = Path(__file__).parent/"logs/AdsCO2_AdsN2_AdsS_QstCO2_QstN2_seed42_cgcnn/version_1"
-    model_dir = Path(__file__).parent/"logs/logAdsCO2_logAdsN2_logAdsS_seed42_cgcnn/version_10"
+    # model_dir = Path(__file__).parent/"logs/logAdsCO2_logAdsN2_logAdsS_seed42_cgcnn/version_10"
+    model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_5"  ## GMOF
+    # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_7"  ## GCluster
     model_name = model_dir.parent.name + "_" + model_dir.name
     result_dir = Path(os.getcwd())/f"inference/{notes}"
     result_dir.mkdir(exist_ok=True, parents=True)
