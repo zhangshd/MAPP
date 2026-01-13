@@ -45,8 +45,10 @@ class CrystalGraphConvNet(nn.Module):
         super(CrystalGraphConvNet, self).__init__()
 
         self.task_types = kwargs.get('task_types', ['regression', 'classification', 'regression'])
+        self.tasks = kwargs.get('tasks', [])
         self.dropout_prob = kwargs.get('dropout_prob', 0.0)
         self.loss_aggregation = kwargs.get('loss_aggregation', "sum")
+        self.output_softplus = kwargs.get('output_softplus', False)  # Global softplus switch for regression
         print("task_types: ", self.task_types)
         self.n_tasks = len(self.task_types)
         self.noise_var = kwargs.get('noise_var', None)
@@ -73,7 +75,15 @@ class CrystalGraphConvNet(nn.Module):
             self.softpluses = nn.ModuleList([nn.Softplus()
                                              for _ in range(n_h - 1)])
         
-        self.fc_outs = nn.ModuleList([OutputLayer(h_fea_len, task_tp) for task_tp in self.task_types])
+        # Create output layers, with softplus for regression tasks if output_softplus is enabled
+        self.fc_outs = nn.ModuleList([
+            OutputLayer(h_fea_len, task_tp, use_softplus=self.output_softplus and 'regression' in task_tp) 
+            for task_tp in self.task_types
+        ])
+        
+        # Track which tasks use softplus output (for skipping norm/denorm)
+        self.softplus_task_indices = [i for i, task_tp in enumerate(self.task_types) 
+                                       if self.output_softplus and 'regression' in task_tp]
 
         # define log_vars for each task
         if self.loss_aggregation == "trainable_weight_sum":

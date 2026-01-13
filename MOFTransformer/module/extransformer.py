@@ -756,17 +756,25 @@ class ExTransformerV3(nn.Module):
         # ===================== Downstream =====================
         hid_dim = config["hid_dim"]
         self.tasks = config["tasks"]
+        self.output_softplus = config.get("output_softplus", False)  # Global softplus switch
         
         self.downstream_heads = []
+        self.softplus_task_indices = []  # Track which tasks use softplus (for skipping norm/denorm)
+        task_idx = 0
         for task, task_tp in config["tasks"].items():
             if task in self.pretrain_tasks:
                 continue
             if "regression" in task_tp:
-                head = heads.RegressionHead(hid_dim)
+                # Use softplus for regression tasks if output_softplus is enabled
+                use_softplus = self.output_softplus
+                head = heads.RegressionHead(hid_dim, Softplus=use_softplus)
+                if use_softplus:
+                    self.softplus_task_indices.append(task_idx)
             elif "classification" in task_tp:
                 n_classes = task_tp.split("_")[-1] if "_" in task_tp else 2
                 head = heads.ClassificationHead(hid_dim, n_classes)
             self.downstream_heads.append(head)
+            task_idx += 1
         self.downstream_heads = nn.ModuleList(self.downstream_heads)
         self.downstream_heads.apply(objectives.init_weights)
         

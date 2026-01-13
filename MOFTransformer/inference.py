@@ -511,11 +511,11 @@ def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=N
             # For arcsinh format: [ArcsinhPressure, LogPressure, CO2Fraction] -> index 2
             # For log format: [Pressure, CO2Fraction] -> index 1
             co2_fraction_idx = model.hparams["config"].get("co2_fraction_idx", None)
-            if co2_fraction_idx is None:
+            if co2_fraction_idx is None and "CO2Fraction" in condi_cols:
                 # Auto-detect based on condi_cols
-                co2_fraction_idx = 2 if (len(condi_cols) > 2 and "CO2Fraction" in condi_cols[2]) else 1
+                co2_fraction_idx = list(condi_cols).index("CO2Fraction")
             
-            if extra_fea_dim > co2_fraction_idx:
+            if co2_fraction_idx and extra_fea_dim > co2_fraction_idx:
                 task_outputs[f"CO2Fraction"] = torch.cat([d[f"{task}_extra_fea"][:,co2_fraction_idx] for d in outputs], dim=0).cpu().numpy().squeeze()
             elif "CO2" in task:
                 task_outputs[f"CO2Fraction"] = 1
@@ -589,23 +589,28 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
-    model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
+    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_4"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_2"  # GMOF no selectivity loss & no langmuir gate
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_6"  # GCluster
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_7"  # GMOF no selectivity loss
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_1"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
-    # uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
-    uncertainty_trees_file = None
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
+    if not uncertainty_trees_file.exists():
+        uncertainty_trees_file = None
     model_name = model_dir.parent.name + "_" + model_dir.name
     result_dir = Path(os.getcwd())/f"inference/{notes}"
     result_dir.mkdir(exist_ok=True, parents=True)
     co2frac = [0, 
                0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
                ]
-    # co2frac = None
+    if 'pure' in model_dir.parent.name:
+        co2frac = None
     press = [
         0.0001,
         0.001,

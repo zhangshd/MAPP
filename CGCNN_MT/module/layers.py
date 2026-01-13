@@ -9,8 +9,20 @@ import torch.nn as nn
 from torch.nn import init
 
 class OutputLayer(nn.Module):
-    def __init__(self, h_fea_len, task_tp):
+    def __init__(self, h_fea_len, task_tp, use_softplus=False):
+        """
+        Output layer for regression or classification tasks.
+        
+        Args:
+            h_fea_len: Hidden feature length
+            task_tp: Task type ('regression' or 'classification_N')
+            use_softplus: If True, apply softplus to ensure non-negative output (regression only).
+                         When enabled, skip normalize/denormalize in training and inference.
+        """
         super(OutputLayer, self).__init__()
+        self.use_softplus = use_softplus
+        self.is_regression = 'regression' in task_tp
+        
         # extract output size from task_tp like 'classification_2' or 'regression'
         if 'classification' in task_tp:
             try:
@@ -18,13 +30,16 @@ class OutputLayer(nn.Module):
             except Exception:
                 output_size = 2
             self.fc = nn.Sequential(nn.Linear(h_fea_len, output_size), nn.LogSoftmax(dim=1))
-            
         else:
             output_size = 1
             self.fc = nn.Linear(h_fea_len, output_size)
+            if use_softplus:
+                self.softplus = nn.Softplus()
 
     def forward(self, x):
         x = self.fc(x)
+        if self.is_regression and self.use_softplus:
+            x = self.softplus(x)
         return x
 
 class ConvLayer(nn.Module):

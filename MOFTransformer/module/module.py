@@ -182,10 +182,10 @@ class Module(LightningModule):
                     self, batch, infer, co2_task, n2_task, 
                     co2_fraction_idx=co2_fraction_idx
                 )
-                if selectivity_loss is not None:
-                    ret["selectivity_loss"] = selectivity_loss * selectivity_weight
-                    if self.write_log:
-                        self.log(f"selectivity/{phase}/loss", selectivity_loss, sync_dist=True)
+                # Always add selectivity_loss (returns 0 if no valid samples, for DDP compatibility)
+                ret["selectivity_loss"] = selectivity_loss * selectivity_weight
+                if self.write_log:
+                    self.log(f"selectivity/{phase}/loss", selectivity_loss, sync_dist=True)
 
         return ret
     

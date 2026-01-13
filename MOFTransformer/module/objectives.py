@@ -55,12 +55,16 @@ def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task,
         eps: Small constant for numerical stability
         
     Returns:
-        Selectivity loss tensor, or None if not enough valid samples
+        Selectivity loss tensor (0 if not enough valid samples, for DDP compatibility)
     """
+    # Return 0 loss instead of None for DDP compatibility
+    device = batch["target"].device
+    zero_loss = torch.tensor(0.0, device=device, requires_grad=True)
+    
     # Get task indices
     task_list = list(pl_module.current_tasks.keys())
     if co2_task not in task_list or n2_task not in task_list:
-        return None
+        return zero_loss
     
     co2_task_id = task_list.index(co2_task)
     n2_task_id = task_list.index(n2_task)
@@ -71,7 +75,7 @@ def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task,
     joint_mask = co2_mask & n2_mask  # Samples with both CO2 and N2 labels
     
     if joint_mask.sum() < 2:
-        return None
+        return zero_loss
     
     # Get ground truth loadings (transformed) for jointly valid samples
     transformed_q_co2_gt = batch["target"][joint_mask, co2_task_id]
@@ -101,13 +105,23 @@ def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task,
     
     # Recover original loading based on transformation type
     # Detect from task name: "Symlog" or "Arcsinh"
+    # Add clamp for numerical stability
+    max_exp = 6  # Clamp to prevent overflow (10^6 = 1e6)
+    
     if 'SYMLOG' in co2_task.upper():
-        # Symlog transform: use symlog_inverse
+        # Symlog transform: use symlog_inverse with clamp
         symlog_threshold = pl_module.hparams["config"].get("symlog_threshold", 0.01)
-        q_co2_pred = symlog_inverse(transformed_q_co2_pred, symlog_threshold)
-        q_n2_pred = symlog_inverse(transformed_q_n2_pred, symlog_threshold)
-        q_co2_gt = symlog_inverse(transformed_q_co2_gt, symlog_threshold)
-        q_n2_gt = symlog_inverse(transformed_q_n2_gt, symlog_threshold)
+        
+        # Clamp to prevent overflow
+        q_co2_pred_clamped = torch.clamp(transformed_q_co2_pred, min=-max_exp, max=max_exp)
+        q_n2_pred_clamped = torch.clamp(transformed_q_n2_pred, min=-max_exp, max=max_exp)
+        q_co2_gt_clamped = torch.clamp(transformed_q_co2_gt, min=-max_exp, max=max_exp)
+        q_n2_gt_clamped = torch.clamp(transformed_q_n2_gt, min=-max_exp, max=max_exp)
+        
+        q_co2_pred = symlog_inverse(q_co2_pred_clamped, symlog_threshold)
+        q_n2_pred = symlog_inverse(q_n2_pred_clamped, symlog_threshold)
+        q_co2_gt = symlog_inverse(q_co2_gt_clamped, symlog_threshold)
+        q_n2_gt = symlog_inverse(q_n2_gt_clamped, symlog_threshold)
     else:
         # Arcsinh transform: q = sinh(arcsinh_q)
         q_co2_pred = torch.sinh(transformed_q_co2_pred)
@@ -128,7 +142,7 @@ def compute_selectivity_loss(pl_module, batch, infer, co2_task, n2_task,
     )
     
     if valid_mask.sum() < 2:
-        return None
+        return zero_loss
     
     # Compute log-selectivity: log(S) = log(q_CO2/q_N2)
     # Note: y_CO2 and y_N2 terms cancel out in MSE(log_S_pred, log_S_gt)
@@ -176,6 +190,9 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     
     # Check if head requires extra_fea input (Langmuir-gated)
     is_langmuir_head = hasattr(head, 'langmuir_gate')
+    # Check if this is a softplus output task (skip normalize/denormalize)
+    # softplus_task_indices is on the model (ExTransformerV3), not on transformer
+    is_softplus_task = hasattr(pl_module.model, 'softplus_task_indices') and task_id in pl_module.model.softplus_task_indices
     
     if is_langmuir_head:
         # LangmuirGatedRegressionHead: pass extra_fea for pressure-based gating
@@ -190,8 +207,11 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     extra_fea = batch["extra_fea"][mask_i, :]  # [B, extra_fea_dim]
 
     if "target" not in batch.keys():
-        # For Langmuir head, output is already in original scale (no denormalize needed)
-        final_logits = logits if is_langmuir_head else pl_module.denormalize(logits, task)
+        # For Langmuir head or softplus task, output is already in original scale (no denormalize needed)
+        if is_langmuir_head or is_softplus_task:
+            final_logits = logits
+        else:
+            final_logits = pl_module.denormalize(logits, task)
         return {
             f"{task}_cif_id": np.array(infer["cif_id"])[mask_i.cpu().numpy().tolist()],
             f"{task}_cls_feats": infer["cls_feats"][mask_i],
@@ -205,10 +225,10 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     labels = batch["target"][mask_i, task_id].clone().detach()  # [B]
     assert len(labels.shape) == 1
 
-    # For Langmuir head: compute loss in original scale (no normalization)
+    # For Langmuir head or softplus task: compute loss in original scale (no normalization)
     # For standard head: normalize labels and compute loss in normalized scale
-    if is_langmuir_head:
-        # Langmuir head outputs in original scale, so use labels directly
+    if is_langmuir_head or is_softplus_task:
+        # Langmuir head or softplus outputs in original scale, so use labels directly
         loss = F.mse_loss(logits, labels)
         final_logits = logits
         final_labels = labels.to(torch.float32)

@@ -31,7 +31,11 @@ def dist_penalty(d, max_value=87.3):
     Returns:
     float: Penalty value.
     """
-    return np.exp(-d ** 2)
+    # Clip the squared distance to prevent underflow
+    # For exp(-x) to be non-zero in float64, x should be less than ~700
+    d_squared = d ** 2
+    d_squared_clipped = np.clip(d_squared, 0, 100)  # Limit to prevent underflow
+    return np.exp(-d_squared_clipped)
 
 def weighted_average(values, weights):
     """
@@ -44,7 +48,11 @@ def weighted_average(values, weights):
     Returns:
     float: Weighted average.
     """
-    return np.sum(values * weights) / np.sum(weights)
+    weight_sum = np.sum(weights)
+    if weight_sum == 0 or np.isnan(weight_sum):
+        # Fallback to simple average if weights sum to zero
+        return np.mean(values)
+    return np.sum(values * weights) / weight_sum
 
 def calculate_lsv_from_tree(tree_dic, latent_vectors_test, k=5):
     """
@@ -75,15 +83,19 @@ def calculate_lsv_from_tree(tree_dic, latent_vectors_test, k=5):
         # Calculate weights based on distances
         weights = dist_penalty(nearest_dists[i])
         
+        # Check if weights sum to zero (numerical underflow case)
+        weight_sum = np.sum(weights)
+        if weight_sum == 0 or np.isnan(weight_sum):
+            # Fall back to uniform weights if all distances are too large
+            print(f"Warning: Zero weight sum at index {i}, using uniform weights")
+            print(f"Nearest dists: {nearest_dists[i]}")
+            weights = np.ones_like(weights) / len(weights)
+        
         # Calculate weighted average of the neighbor labels
         weighted_avg = weighted_average(neighbor_labels, weights)
-        try:
-            # Calculate variance of neighbor labels as a measure of uncertainty
-            variance = np.average((neighbor_labels - weighted_avg) ** 2, weights=weights)
-        except ZeroDivisionError:
-            print(f"ZeroDivisionError: {i}")
-            print(f"Nearest dists: {nearest_dists[i]}")
-            raise ZeroDivisionError
+        
+        # Calculate variance of neighbor labels as a measure of uncertainty
+        variance = np.average((neighbor_labels - weighted_avg) ** 2, weights=weights)
         
         variances.append(variance)
     variances = np.array(variances)

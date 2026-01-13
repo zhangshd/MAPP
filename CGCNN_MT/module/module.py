@@ -74,7 +74,7 @@ def compute_selectivity_loss(outputs, targets, mask, tasks, task_types, symlog_t
         eps: Small constant for numerical stability
     
     Returns:
-        Selectivity loss tensor, or None if not enough valid samples
+        Selectivity loss tensor (0 if not enough valid samples for DDP compatibility)
     """
     import torch
     
@@ -88,13 +88,17 @@ def compute_selectivity_loss(outputs, targets, mask, tasks, task_types, symlog_t
             elif 'N2' in task_upper:
                 n2_idx = i
     
+    # Return 0 loss instead of None for DDP compatibility
+    device = targets.device
+    zero_loss = torch.tensor(0.0, device=device, requires_grad=True)
+    
     if co2_idx is None or n2_idx is None:
-        return None
+        return zero_loss
     
     # Get joint mask: samples with both CO2 and N2 valid
     joint_mask = mask[:, co2_idx] & mask[:, n2_idx]
     if joint_mask.sum() < 2:
-        return None
+        return zero_loss
     
     # Get predictions and ground truth
     q_co2_pred_raw = outputs[co2_idx]["output"][joint_mask].squeeze(-1)
@@ -105,17 +109,24 @@ def compute_selectivity_loss(outputs, targets, mask, tasks, task_types, symlog_t
     # Detect transformation type from task name
     task_name = tasks[co2_idx].upper()
     if 'SYMLOG' in task_name:
-        # Symlog transform: use inverse
-        q_co2_pred = symlog_inverse_torch(q_co2_pred_raw, symlog_threshold)
-        q_n2_pred = symlog_inverse_torch(q_n2_pred_raw, symlog_threshold)
-        q_co2_gt = symlog_inverse_torch(q_co2_gt_raw, symlog_threshold)
-        q_n2_gt = symlog_inverse_torch(q_n2_gt_raw, symlog_threshold)
+        # Symlog transform: use inverse with clamp for numerical stability
+        max_exp = 6  # Clamp to prevent overflow (10^6 = 1e6)
+        q_co2_pred_raw_clamped = torch.clamp(q_co2_pred_raw, min=-max_exp, max=max_exp)
+        q_n2_pred_raw_clamped = torch.clamp(q_n2_pred_raw, min=-max_exp, max=max_exp)
+        q_co2_gt_raw_clamped = torch.clamp(q_co2_gt_raw, min=-max_exp, max=max_exp)
+        q_n2_gt_raw_clamped = torch.clamp(q_n2_gt_raw, min=-max_exp, max=max_exp)
+        
+        q_co2_pred = symlog_inverse_torch(q_co2_pred_raw_clamped, symlog_threshold)
+        q_n2_pred = symlog_inverse_torch(q_n2_pred_raw_clamped, symlog_threshold)
+        q_co2_gt = symlog_inverse_torch(q_co2_gt_raw_clamped, symlog_threshold)
+        q_n2_gt = symlog_inverse_torch(q_n2_gt_raw_clamped, symlog_threshold)
     elif 'LOG' in task_name:
-        # Log transform: q = 10^log_q
-        q_co2_pred = torch.pow(10, q_co2_pred_raw)
-        q_n2_pred = torch.pow(10, q_n2_pred_raw)
-        q_co2_gt = torch.pow(10, q_co2_gt_raw)
-        q_n2_gt = torch.pow(10, q_n2_gt_raw)
+        # Log transform: q = 10^log_q with clamp
+        max_exp = 6
+        q_co2_pred = torch.pow(10, torch.clamp(q_co2_pred_raw, max=max_exp))
+        q_n2_pred = torch.pow(10, torch.clamp(q_n2_pred_raw, max=max_exp))
+        q_co2_gt = torch.pow(10, torch.clamp(q_co2_gt_raw, max=max_exp))
+        q_n2_gt = torch.pow(10, torch.clamp(q_n2_gt_raw, max=max_exp))
     else:
         # Arcsinh transform: q = sinh(arcsinh_q)
         q_co2_pred = torch.sinh(q_co2_pred_raw)
@@ -132,7 +143,7 @@ def compute_selectivity_loss(outputs, targets, mask, tasks, task_types, symlog_t
     )
     
     if valid_mask.sum() < 2:
-        return None
+        return zero_loss
     
     # Compute log-selectivity
     log_S_pred = torch.log(q_co2_pred[valid_mask] + eps) - torch.log(q_n2_pred[valid_mask] + eps)
@@ -280,8 +291,17 @@ class MInterface(pl.LightningModule):
             mask = torch.ones((len(cifids), len(self.hparams.tasks)), dtype=torch.bool)
         processed_outputs = {}
         for i, task in enumerate(self.hparams.tasks):
+            # Check if this is a Langmuir head task (skip denormalize)
+            is_langmuir_task = hasattr(self.model, 'langmuir_task_indices') and i in self.model.langmuir_task_indices
+            # Check if this is a softplus output task (skip denormalize)
+            is_softplus_task = hasattr(self.model, 'softplus_task_indices') and i in self.model.softplus_task_indices
+            
             if 'regression' in self.hparams.task_types[i]:
-                processed_outputs[f"{task}_pred"] = self.denormalize(outputs[i]["output"], task_id=i)[mask[:, i]]
+                if is_langmuir_task or is_softplus_task:
+                    # Langmuir head or softplus output: output is already in label scale
+                    processed_outputs[f"{task}_pred"] = outputs[i]["output"][mask[:, i]]
+                else:
+                    processed_outputs[f"{task}_pred"] = self.denormalize(outputs[i]["output"], task_id=i)[mask[:, i]]
             elif 'classification' in self.hparams.task_types[i]:
                 outputs[i]["output"] = torch.exp(outputs[i]["output"])
                 processed_outputs[f"{task}_pred"] = torch.argmax(outputs[i]["output"], dim=1, keepdim=True)[mask[:, i]]
@@ -334,16 +354,18 @@ class MInterface(pl.LightningModule):
             
             # Check if this is a Langmuir head task (skip normalize/denormalize)
             is_langmuir_task = hasattr(self.model, 'langmuir_task_indices') and task_id in self.model.langmuir_task_indices
+            # Check if this is a softplus output task (skip normalize/denormalize)
+            is_softplus_task = hasattr(self.model, 'softplus_task_indices') and task_id in self.model.softplus_task_indices
             
             if "classification" in self.hparams.task_types[task_id]:
                 target_i_normed = target_i.squeeze(-1).long()
                 target_i = target_i.squeeze(-1).long()
                 output_i_denorm = torch.argmax(output_i, dim=1)
-            elif is_langmuir_task:
-                # Langmuir head: output is already in label scale (symlog-transformed)
-                # Skip normalize/denormalize to avoid bottom plateau issue
-                target_i_normed = target_i  # Labels are already symlog-transformed
-                output_i_denorm = output_i  # Output is already symlog-transformed
+            elif is_langmuir_task or is_softplus_task:
+                # Langmuir head or softplus output: skip normalize/denormalize
+                # Output is already in label scale
+                target_i_normed = target_i
+                output_i_denorm = output_i
             else:
                 target_i_normed = self.normalize(target_i, task_id)
                 output_i_denorm = self.denormalize(output_i, task_id)
@@ -422,11 +444,11 @@ class MInterface(pl.LightningModule):
                 self.hparams.tasks, self.hparams.task_types,
                 symlog_threshold=self.hparams.get('symlog_threshold', 1e-4)
             )
-            if sel_loss is not None:
-                loss += selectivity_loss_weight * sel_loss
-                self.log(f'{split}_selectivity_loss', sel_loss, 
-                         prog_bar=False, on_step=True, on_epoch=True, 
-                         sync_dist=True, batch_size=self.hparams.batch_size)
+            # Always add sel_loss (returns 0 if no valid samples, for DDP compatibility)
+            loss = loss + selectivity_loss_weight * sel_loss
+            self.log(f'{split}_selectivity_loss', sel_loss, 
+                     prog_bar=False, on_step=True, on_epoch=True, 
+                     sync_dist=True, batch_size=self.hparams.batch_size)
 
         self.log(f'{split}_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=self.hparams.batch_size)
         if split == 'val':

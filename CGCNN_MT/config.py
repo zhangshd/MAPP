@@ -106,6 +106,7 @@ def cgcnn():
     use_extra_fea = True  # Use extra features flag
     use_cell_params = False  # Use cell parameters flag
     atom_layer_norm = False  # Atom layer normalization flag
+    output_softplus = True  # Output softplus flag
 
 @ex.named_config
 def cgcnn_raw():
@@ -315,8 +316,8 @@ def ads_qst_co2_n2_test():
 def ads_symlog_co2_n2():
     """Symlog-transformed CO2/N2 mixture adsorption prediction"""
     exp_name = "ads_symlog_co2_n2"
-    # data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_org' # GMOF
-    data_dir = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org'  # GCluster
+    data_dir = 'data/ddmof/mof_split_val1000_test1000_seed0_org' # GMOF
+    # data_dir = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org'  # GCluster
     data_dir = str(Path(__file__).parent/data_dir)
     batch_size = 32
     lr = 1e-4
@@ -327,7 +328,7 @@ def ads_symlog_co2_n2():
     log_press = False  # the pressure column is already transformed
     symlog_threshold = 1e-4  # Symlog transformation threshold
     # Selectivity auxiliary loss
-    selectivity_loss_weight = 0.0
+    selectivity_loss_weight = 0.1
 
 @ex.named_config
 def ads_symlog_co2_n2_pure():
@@ -384,7 +385,7 @@ def test_symlog():
     symlog_threshold = 1e-4
     
     # Selectivity auxiliary loss
-    selectivity_loss_weight = 0.0
+    selectivity_loss_weight = 0.1
     
     # MAPE threshold
     mape_threshold = 0.01
