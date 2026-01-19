@@ -293,12 +293,12 @@ class MInterface(pl.LightningModule):
         for i, task in enumerate(self.hparams.tasks):
             # Check if this is a Langmuir head task (skip denormalize)
             is_langmuir_task = hasattr(self.model, 'langmuir_task_indices') and i in self.model.langmuir_task_indices
-            # Check if this is a softplus output task (skip denormalize)
-            is_softplus_task = hasattr(self.model, 'softplus_task_indices') and i in self.model.softplus_task_indices
+            # Check if this task skips normalize/denormalize (has activation)
+            skip_normalize = hasattr(self.model, 'skip_normalize_task_indices') and i in self.model.skip_normalize_task_indices
             
             if 'regression' in self.hparams.task_types[i]:
-                if is_langmuir_task or is_softplus_task:
-                    # Langmuir head or softplus output: output is already in label scale
+                if is_langmuir_task or skip_normalize:
+                    # Langmuir head or activated output: output is already in label scale
                     processed_outputs[f"{task}_pred"] = outputs[i]["output"][mask[:, i]]
                 else:
                     processed_outputs[f"{task}_pred"] = self.denormalize(outputs[i]["output"], task_id=i)[mask[:, i]]
@@ -354,15 +354,15 @@ class MInterface(pl.LightningModule):
             
             # Check if this is a Langmuir head task (skip normalize/denormalize)
             is_langmuir_task = hasattr(self.model, 'langmuir_task_indices') and task_id in self.model.langmuir_task_indices
-            # Check if this is a softplus output task (skip normalize/denormalize)
-            is_softplus_task = hasattr(self.model, 'softplus_task_indices') and task_id in self.model.softplus_task_indices
+            # Check if this task skips normalize/denormalize (has activation)
+            skip_normalize = hasattr(self.model, 'skip_normalize_task_indices') and task_id in self.model.skip_normalize_task_indices
             
             if "classification" in self.hparams.task_types[task_id]:
                 target_i_normed = target_i.squeeze(-1).long()
                 target_i = target_i.squeeze(-1).long()
                 output_i_denorm = torch.argmax(output_i, dim=1)
-            elif is_langmuir_task or is_softplus_task:
-                # Langmuir head or softplus output: skip normalize/denormalize
+            elif is_langmuir_task or skip_normalize:
+                # Langmuir head or activated output: skip normalize/denormalize
                 # Output is already in label scale
                 target_i_normed = target_i
                 output_i_denorm = output_i

@@ -756,20 +756,21 @@ class ExTransformerV3(nn.Module):
         # ===================== Downstream =====================
         hid_dim = config["hid_dim"]
         self.tasks = config["tasks"]
-        self.output_softplus = config.get("output_softplus", False)  # Global softplus switch
+        
+        # Output activation: 'none', 'softplus', 'relu'
+        self.output_activation = config.get("output_activation", "none")
         
         self.downstream_heads = []
-        self.softplus_task_indices = []  # Track which tasks use softplus (for skipping norm/denorm)
+        self.skip_normalize_task_indices = []  # Tasks that skip normalize/denormalize
         task_idx = 0
         for task, task_tp in config["tasks"].items():
             if task in self.pretrain_tasks:
                 continue
             if "regression" in task_tp:
-                # Use softplus for regression tasks if output_softplus is enabled
-                use_softplus = self.output_softplus
-                head = heads.RegressionHead(hid_dim, Softplus=use_softplus)
-                if use_softplus:
-                    self.softplus_task_indices.append(task_idx)
+                # Use activation for regression tasks
+                head = heads.RegressionHead(hid_dim, activation=self.output_activation)
+                if head.skip_normalize:
+                    self.skip_normalize_task_indices.append(task_idx)
             elif "classification" in task_tp:
                 n_classes = task_tp.split("_")[-1] if "_" in task_tp else 2
                 head = heads.ClassificationHead(hid_dim, n_classes)
@@ -929,7 +930,12 @@ class ExTransformerV4(nn.Module):
         # Langmuir gating configuration
         self.langmuir_learnable_b = config.get("langmuir_learnable_b", True)
         self.langmuir_b_init = config.get("langmuir_b_init", 1.0)
-        self.langmuir_softplus = config.get("langmuir_softplus", True)
+        # Output activation: 'none', 'softplus', 'relu', 'leaky_relu'
+        # Legacy support: langmuir_softplus=True -> activation='softplus'
+        if config.get("langmuir_softplus", False) and not config.get("output_activation"):
+            self.output_activation = "softplus"
+        else:
+            self.output_activation = config.get("output_activation", "softplus")
         self.langmuir_power = config.get("langmuir_power", 1.0)  # Gate power for steeper response
         self.langmuir_learnable_power = config.get("langmuir_learnable_power", False)  # Whether power is learnable
         self.langmuir_power_min = config.get("langmuir_power_min", 1.0)  # Min power value (when learnable)
@@ -1027,7 +1033,7 @@ class ExTransformerV4(nn.Module):
                         hid_dim, 
                         learnable_b=self.langmuir_learnable_b,
                         b_init=self.langmuir_b_init,
-                        use_softplus_output=self.langmuir_softplus,
+                        activation=self.output_activation,
                         component=component,
                         arcsinh_pressure_idx=self.arcsinh_pressure_idx,
                         co2_fraction_idx=self.co2_fraction_idx,

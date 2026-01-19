@@ -565,9 +565,11 @@ if __name__ == "__main__":
 
     clean = True
     cif_dir = Path(__file__).parent.parent/"GCMC/data/ddmof/cifs"
+    cif_dir = Path(__file__).parent.parent/"CGCNN_MT/data/exp_MOF"
     # cif_dir = Path(__file__).parent.parent/"CGCNN_MT/data/ddmof/cifs"
     # cif_dir = Path(__file__).parent.parent/"GCMC/data/CoREMOF2019/cifs"
-    notes = cif_dir.parent.name if clean else cif_dir.parent.name + "_raw"
+    # cif_dir = Path("/home/zhangsd/repos/CF-BGAP/RASPATOOLS/examples/dup_demo_CALF20")
+    notes = cif_dir.name if clean else cif_dir.name + "_raw"
 
     # df = pd.read_csv("/home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/mof_split_val10_test10_seed0/test.csv")
     # cif_list = df["MofName"].tolist()
@@ -593,13 +595,16 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_4"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_2"  # GMOF no selectivity loss & no langmuir gate
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_3"  # GMOF with selectivity loss & output softplus
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_4"  # GCluster w/o selectivity loss & output softplus
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_5"  # GMOF w/o selectivity loss & output softplus
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_6"  # GCluster
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_7"  # GMOF no selectivity loss
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_1"
-    model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
     uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
     if not uncertainty_trees_file.exists():
         uncertainty_trees_file = None

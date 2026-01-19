@@ -34,7 +34,7 @@ class LangmuirGatedRegressionHead(nn.Module):
         hid_dim: Hidden dimension from backbone
         learnable_b: Whether the saturation parameter b is learnable
         b_init: Initial value for b parameter (in 1/bar units)
-        use_softplus_output: Apply softplus to ensure non-negative output
+        activation: Output activation ('none', 'softplus', 'relu', 'leaky_relu')
         component: 'CO2' or 'N2' - determines which partial pressure to use
         arcsinh_pressure_idx: Index of arcsinh(P) in extra_fea
         co2_fraction_idx: Index of CO2 fraction in extra_fea
@@ -44,12 +44,14 @@ class LangmuirGatedRegressionHead(nn.Module):
         power_max: Maximum power value when learnable
         output_transform: 'none', 'symlog', or 'arcsinh'
         symlog_threshold: Threshold for symlog transform
+        leaky_relu_slope: Negative slope for leaky_relu (default: 0.01)
+        relu_bias_init: Initial bias value for ReLU to prevent dead neurons (default: 1.0)
     """
     
     def __init__(self, hid_dim, 
                  learnable_b=True, 
                  b_init=1.0,
-                 use_softplus_output=True,
+                 activation='softplus',  # Default to softplus for backward compatibility
                  component='CO2',
                  arcsinh_pressure_idx=0,
                  co2_fraction_idx=2,
@@ -58,10 +60,13 @@ class LangmuirGatedRegressionHead(nn.Module):
                  power_min=1.0,
                  power_max=5.0,
                  output_transform='none',
-                 symlog_threshold=1e-4):
+                 symlog_threshold=1e-4,
+                 leaky_relu_slope=0.01,
+                 relu_bias_init=1.0):
         super().__init__()
         self.fc_out = nn.Linear(hid_dim, 1)
-        self.use_softplus_output = use_softplus_output
+        self.activation = activation.lower() if activation else 'none'
+        self.leaky_relu_slope = leaky_relu_slope
         self.component = component.upper()
         self.arcsinh_pressure_idx = arcsinh_pressure_idx
         self.co2_fraction_idx = co2_fraction_idx
@@ -69,6 +74,10 @@ class LangmuirGatedRegressionHead(nn.Module):
         self.learnable_power = learnable_power
         self.power_min = power_min
         self.power_max = power_max
+        
+        # Initialize bias for ReLU to prevent dead neurons
+        if self.activation == 'relu' and relu_bias_init > 0:
+            nn.init.constant_(self.fc_out.bias, relu_bias_init)
         
         # b parameter: saturation parameter
         if learnable_b:
@@ -168,8 +177,18 @@ class LangmuirGatedRegressionHead(nn.Module):
         # Neural network output (represents q_sat-like value)
         nn_out = self.fc_out(cls_feats).squeeze(-1)  # [B]
         
-        if self.use_softplus_output:
-            nn_out = F.softplus(nn_out)  # Ensure non-negative
+        # Apply activation to ensure non-negative nn_out
+        if self.activation == 'softplus':
+            nn_out = F.softplus(nn_out)
+        elif self.activation == 'relu':
+            nn_out = F.relu(nn_out)
+        elif self.activation == 'leaky_relu':
+            # Training: use leaky_relu to maintain gradient flow
+            # Inference: clamp to ensure non-negative output
+            nn_out = F.leaky_relu(nn_out, negative_slope=self.leaky_relu_slope)
+            if not self.training:
+                nn_out = torch.clamp(nn_out, min=0)
+        # 'none': no activation
         
         # Compute partial pressure from extra features
         P_partial = self.compute_partial_pressure(extra_fea)  # [B]

@@ -190,9 +190,14 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     
     # Check if head requires extra_fea input (Langmuir-gated)
     is_langmuir_head = hasattr(head, 'langmuir_gate')
-    # Check if this is a softplus output task (skip normalize/denormalize)
-    # softplus_task_indices is on the model (ExTransformerV3), not on transformer
-    is_softplus_task = hasattr(pl_module.model, 'softplus_task_indices') and task_id in pl_module.model.softplus_task_indices
+    # Check if this head skips normalize/denormalize (has non-trivial output activation)
+    # skip_normalize_task_indices is on the model (ExTransformerV3/V4)
+    skip_normalize = (
+        hasattr(pl_module.model, 'skip_normalize_task_indices') and 
+        task_id in pl_module.model.skip_normalize_task_indices
+    ) or (
+        hasattr(head, 'skip_normalize') and head.skip_normalize
+    )
     
     if is_langmuir_head:
         # LangmuirGatedRegressionHead: pass extra_fea for pressure-based gating
@@ -207,8 +212,8 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     extra_fea = batch["extra_fea"][mask_i, :]  # [B, extra_fea_dim]
 
     if "target" not in batch.keys():
-        # For Langmuir head or softplus task, output is already in original scale (no denormalize needed)
-        if is_langmuir_head or is_softplus_task:
+        # For Langmuir head or activated output, result is already in original scale
+        if is_langmuir_head or skip_normalize:
             final_logits = logits
         else:
             final_logits = pl_module.denormalize(logits, task)
@@ -225,10 +230,10 @@ def compute_regression(pl_module, batch, task, infer, phase='train'):
     labels = batch["target"][mask_i, task_id].clone().detach()  # [B]
     assert len(labels.shape) == 1
 
-    # For Langmuir head or softplus task: compute loss in original scale (no normalization)
+    # For Langmuir head or activated output: compute loss in original scale (no normalization)
     # For standard head: normalize labels and compute loss in normalized scale
-    if is_langmuir_head or is_softplus_task:
-        # Langmuir head or softplus outputs in original scale, so use labels directly
+    if is_langmuir_head or skip_normalize:
+        # Output is already in original scale, so use labels directly
         loss = F.mse_loss(logits, labels)
         final_logits = logits
         final_labels = labels.to(torch.float32)

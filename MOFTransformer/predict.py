@@ -253,7 +253,10 @@ def load_config_from_dir(model_dir):
 if __name__ == "__main__":
 
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_from_/version_15"
-    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_2"  # GMOF no selectivity loss & no langmuir gate
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_2"  # GMOF no selectivity loss & no langmuir gate
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_3"  # GMOF with selectivity loss & output softplus
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_4"  # GCluster w/o selectivity loss & output softplus
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_5"  # GMOF with selectivity loss & output softplus
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_6"  # GCluster
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_7"  # GMOF no selectivity loss

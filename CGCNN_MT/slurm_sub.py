@@ -17,8 +17,8 @@ job_templet = """#!/bin/bash
 #SBATCH --ntasks-per-node={n_gpus}
 #SBATCH --cpus-per-task=64
 #SBATCH --mem-per-gpu=100G
-#SBATCH --nodelist=c3
 #SBATCH --gres=gpu:{n_gpus}
+#SBATCH --time=120:00:00
 export PATH=/opt/share/miniconda3/envs/mofnn/bin:$PATH
 export LD_LIBRARY_PATH=/opt/share/miniconda3/envs/mofnn/lib:$LD_LIBRARY_PATH
 
@@ -56,8 +56,8 @@ if __name__ == '__main__':
                      ]
     model_configs = [
         # "att_cgcnn",
-        "cgcnn",
-        # "cgcnn_langmuir",
+        # "cgcnn",
+        "cgcnn_langmuir",
         # "cgcnn_raw",
         # "fcnn",
         # "att_fcnn",

@@ -36,7 +36,7 @@ class CrystalGraphConvNetLangmuir(CrystalGraphConvNet):
         Additional kwargs for Langmuir gating:
             langmuir_learnable_b: Whether b is learnable (default: True)
             langmuir_b_init: Initial value for b (default: 1.0)
-            langmuir_softplus: Use softplus for NN output (default: True)
+            output_activation: Output activation ('none', 'softplus', 'relu', 'leaky_relu')
             langmuir_power: Gate power (default: 1.0)
             langmuir_learnable_power: Whether power is learnable (default: True)
             langmuir_power_min: Min power value (default: 1.0)
@@ -57,7 +57,7 @@ class CrystalGraphConvNetLangmuir(CrystalGraphConvNet):
         # Extract Langmuir configuration
         self.langmuir_learnable_b = kwargs.get('langmuir_learnable_b', True)
         self.langmuir_b_init = kwargs.get('langmuir_b_init', 1.0)
-        self.langmuir_softplus = kwargs.get('langmuir_softplus', True)
+        self.output_activation = kwargs.get('output_activation', 'softplus')
         self.langmuir_power = kwargs.get('langmuir_power', 1.0)
         self.langmuir_learnable_power = kwargs.get('langmuir_learnable_power', True)
         self.langmuir_power_min = kwargs.get('langmuir_power_min', 1.0)
@@ -93,7 +93,7 @@ class CrystalGraphConvNetLangmuir(CrystalGraphConvNet):
                     hid_dim=h_fea_len,
                     learnable_b=self.langmuir_learnable_b,
                     b_init=self.langmuir_b_init,
-                    use_softplus_output=self.langmuir_softplus,
+                    activation=self.output_activation,
                     component=component,
                     arcsinh_pressure_idx=self.arcsinh_pressure_idx,
                     co2_fraction_idx=self.co2_fraction_idx,

@@ -9,19 +9,25 @@ import torch.nn as nn
 from torch.nn import init
 
 class OutputLayer(nn.Module):
-    def __init__(self, h_fea_len, task_tp, use_softplus=False):
+    def __init__(self, h_fea_len, task_tp, activation='none', leaky_relu_slope=0.01, relu_bias_init=1.0):
         """
         Output layer for regression or classification tasks.
         
         Args:
             h_fea_len: Hidden feature length
             task_tp: Task type ('regression' or 'classification_N')
-            use_softplus: If True, apply softplus to ensure non-negative output (regression only).
-                         When enabled, skip normalize/denormalize in training and inference.
+            activation: Output activation ('none', 'softplus', 'relu', 'leaky_relu')
+                       When not 'none', skip normalize/denormalize in training and inference.
+            leaky_relu_slope: Negative slope for leaky_relu (default: 0.01)
+            relu_bias_init: Initial bias value for ReLU to prevent dead neurons (default: 1.0)
         """
         super(OutputLayer, self).__init__()
-        self.use_softplus = use_softplus
+        self.activation = activation.lower() if activation else 'none'
+        self.leaky_relu_slope = leaky_relu_slope
         self.is_regression = 'regression' in task_tp
+        
+        # Flag to indicate if this layer skips normalize/denormalize
+        self.skip_normalize = self.activation != 'none'
         
         # extract output size from task_tp like 'classification_2' or 'regression'
         if 'classification' in task_tp:
@@ -33,13 +39,21 @@ class OutputLayer(nn.Module):
         else:
             output_size = 1
             self.fc = nn.Linear(h_fea_len, output_size)
-            if use_softplus:
-                self.softplus = nn.Softplus()
+            # Initialize bias for ReLU to prevent dead neurons
+            if self.activation == 'relu' and relu_bias_init > 0:
+                nn.init.constant_(self.fc.bias, relu_bias_init)
 
     def forward(self, x):
         x = self.fc(x)
-        if self.is_regression and self.use_softplus:
-            x = self.softplus(x)
+        if self.is_regression:
+            if self.activation == 'softplus':
+                x = torch.nn.functional.softplus(x)
+            elif self.activation == 'relu':
+                x = torch.nn.functional.relu(x)
+            elif self.activation == 'leaky_relu':
+                x = torch.nn.functional.leaky_relu(x, negative_slope=self.leaky_relu_slope)
+                if not self.training:
+                    x = torch.clamp(x, min=0)
         return x
 
 class ConvLayer(nn.Module):
