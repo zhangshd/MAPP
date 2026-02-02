@@ -154,7 +154,7 @@ def cgcnn_langmuir():
     langmuir_learnable_b = True
     langmuir_b_init = 1.0
     # output_activation already defined above
-    output_activation = "leaky_relu"
+    output_activation = "softplus"
     langmuir_power = 1.0
     langmuir_learnable_power = False
     langmuir_power_min = 1.0

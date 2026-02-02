@@ -226,7 +226,10 @@ if __name__ == '__main__':
     # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_5"  ## GMOF
     # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_7"  ## GCluster
     # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_9"  ## GMOF, with softplus output, no selectivity loss
-    model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_10"  ## GMOF, with softplus output, with selectivity loss
+    # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn/version_10"  ## GMOF, with softplus output, with selectivity loss
     # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/version_1"  ## GMOF with langmuir gate
     # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/version_2"  ## GCluster with langmuir gate
+
+    # model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/version_7"  ## GMOF with langmuir gate & softplus output
+    model_dir = Path(__file__).parent/"logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/version_8"  ## GCluster with langmuir gate & softplus output
     main(model_dir)

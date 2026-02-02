@@ -241,6 +241,7 @@ def load_config_from_dir(model_dir):
     with open(model_dir/'hparams.yaml', 'r') as f:
         hparams = yaml.load(f, Loader=yaml.Loader)
     model_file = [file for file in (model_dir / 'checkpoints/val').glob('*.ckpt') if 'last' not in file.name][0]
+    # model_file = model_dir/"checkpoints/the_metric=-0.040-epoch=21.ckpt"
     print("##")
     print(hparams)
     print("##")
@@ -256,16 +257,20 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_2"  # GMOF no selectivity loss & no langmuir gate
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_3"  # GMOF with selectivity loss & output softplus
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_4"  # GCluster w/o selectivity loss & output softplus
-    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_5"  # GMOF with selectivity loss & output softplus
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_5"  # GMOF with selectivity loss & output softplus
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_6"  # GCluster
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_7"  # GMOF no selectivity loss
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_9"  # GMOF
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_14"  # GMOF softplus out&langmuir gate
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_12"  # GCluster softplus out&langmuir gate
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_2" # GMOF pure softplus out&langmuir gate
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
     # model_dir = Path(__file__).parent/"logs/test_org_v4_seed42_extranformerv4_from_/version_14"
     config = load_config_from_dir(model_dir)
-    predict(config["root_dataset"], config["load_path"], split="all", 
+    predict(config["root_dataset"], config["load_path"], split="test", 
             **{k: v for k, v in config.items() if k not in ["root_dataset", "load_path", "split"]})
 
     # log_dir = Path(__file__).parent/"logs"

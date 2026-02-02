@@ -59,8 +59,9 @@ def load_model_from_dir(model_dir):
                       deterministic=True,
                       logger=False,
                       )
-    model_file = [file for file in (model_dir / 'checkpoints/val').glob('*.ckpt') if 'last' not in file.name][0]
-    
+    model_file = [file for file in (model_dir / 'checkpoints/val').glob('*.ckpt') if 'last' not in file.name]
+    model_file.sort(key=lambda x: float(x.name.split("=-")[-1].split("-")[0]))
+    model_file = model_file[0]
     config["load_path"] = model_file
     model = Module(config)
     model.eval()
@@ -314,8 +315,15 @@ class InferenceDataset(torch.utils.data.Dataset):
 
         extra_fea = torch.FloatTensor(extra_fea)
 
-        ret.update(copy.deepcopy(self.grid_data[cif_id]))
-        ret.update(copy.deepcopy(self.graph_data[cif_id]))
+        # Optimization: Remove deepcopy as data is treated as read-only in collate
+        # grid_data is large and read-only in collate, so we can use reference.
+        ret.update(self.grid_data[cif_id])
+        # nbr_idx in graph_data IS MODIFIED IN PLACE in collate (+= base_idx), so we MUST deepcopy it.
+        # UPDATE: collate has been fixed to NOT modify in place. So we can use reference here too!
+        ret.update(self.graph_data[cif_id])
+
+
+
         # ret.update(self.get_grid_data(cif_id, self.draw_false_grid))
         # ret.update(self.get_graph(cif_id))
 
@@ -359,14 +367,16 @@ class InferenceDataset(torch.utils.data.Dataset):
 
         crystal_atom_idx = []
         base_idx = 0
+        new_batch_nbr_idx = []
         for i, nbr_idx in enumerate(batch_nbr_idx):
             n_i = nbr_idx.shape[0]
             crystal_atom_idx.append(torch.arange(n_i) + base_idx)
-            nbr_idx += base_idx
+            # Create a new tensor instead of modifying in-place to allow shared memory/caching
+            new_batch_nbr_idx.append(nbr_idx + base_idx)
             base_idx += n_i
 
         dict_batch["atom_num"] = torch.cat(batch_atom_num, dim=0)
-        dict_batch["nbr_idx"] = torch.cat(batch_nbr_idx, dim=0)
+        dict_batch["nbr_idx"] = torch.cat(new_batch_nbr_idx, dim=0)
         dict_batch["nbr_fea"] = torch.cat(batch_nbr_fea, dim=0)
         dict_batch["crystal_atom_idx"] = crystal_atom_idx
 
@@ -423,20 +433,23 @@ class InferenceDataset(torch.utils.data.Dataset):
 
         return dict_batch
 
-def load_config_from_dir(model_dir):
+# def load_config_from_dir(model_dir):
     
-    model_dir = Path(model_dir)
-    with open(model_dir/'hparams.yaml', 'r') as f:
-        hparams = yaml.load(f, Loader=yaml.Loader)
-    model_file = [file for file in (model_dir / 'checkpoints/val').glob('*.ckpt') if 'last' not in file.name][0]
-    print("##")
-    print(hparams)
-    print("##")
-    config = hparams["config"]
-    config["load_path"] = model_file
-    config = get_valid_config(config)
-    # model = Module.load_from_checkpoint(model_file, **hparams)
-    return config
+#     model_dir = Path(model_dir)
+#     with open(model_dir/'hparams.yaml', 'r') as f:
+#         hparams = yaml.load(f, Loader=yaml.Loader)
+#     model_file = [file for file in (model_dir / 'checkpoints/val').glob('*.ckpt') if 'last' not in file.name]
+#     model_file.sort(key=lambda x: int(x.name.split("=")[-1].split(".")[0]))
+#     print(model_file)
+#     model_file = model_file[-2]
+#     print("##")
+#     # print(hparams)
+#     print("##")
+#     config = hparams["config"]
+#     config["load_path"] = model_file
+#     config = get_valid_config(config)
+#     # model = Module.load_from_checkpoint(model_file, **hparams)
+#     return config
 
 def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=None, uncertainty_trees_file=None, **kwargs):
     """
@@ -564,14 +577,18 @@ if __name__ == "__main__":
 
 
     clean = True
-    cif_dir = Path(__file__).parent.parent/"GCMC/data/ddmof/cifs"
+    # cif_dir = Path(__file__).parent.parent/"GCMC/data/ddmof/cifs"
     cif_dir = Path(__file__).parent.parent/"CGCNN_MT/data/exp_MOF"
     # cif_dir = Path(__file__).parent.parent/"CGCNN_MT/data/ddmof/cifs"
     # cif_dir = Path(__file__).parent.parent/"GCMC/data/CoREMOF2019/cifs"
     # cif_dir = Path("/home/zhangsd/repos/CF-BGAP/RASPATOOLS/examples/dup_demo_CALF20")
-    notes = cif_dir.name if clean else cif_dir.name + "_raw"
+    # cif_dir = Path("/home/zhangsd/repos/CF-BGAP/RASPATOOLS/examples/dup_CuBTC")
+    if cif_dir.name == "cifs":
+        notes = cif_dir.parent.name if clean else cif_dir.parent.name + "_raw"
+    else:
+        notes = cif_dir.name if clean else cif_dir.name + "_raw"
 
-    # df = pd.read_csv("/home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/mof_split_val10_test10_seed0/test.csv")
+    # df = pd.read_csv("/home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/mo  f_split_val10_test10_seed0/test.csv")
     # cif_list = df["MofName"].tolist()
     # cif_list = [cif_dir/(cif + ".cif") for cif in cif_list]
 
@@ -598,13 +615,17 @@ if __name__ == "__main__":
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_3"  # GMOF with selectivity loss & output softplus
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_4"  # GCluster w/o selectivity loss & output softplus
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_5"  # GMOF w/o selectivity loss & output softplus
-    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_6"  # GCluster
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_7"  # GMOF no selectivity loss
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_9"  # GMOF
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_10"  # GMOF
+    model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_14"  # GMOF
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_2"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
+    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_2" # GMOF pure softplus out&langmuir gate
     uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
     if not uncertainty_trees_file.exists():
         uncertainty_trees_file = None

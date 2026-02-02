@@ -336,8 +336,8 @@ def ads_co2_n2_org_v4():
     """
     exp_name = "ads_co2_n2_org_v4"
     model_name = "extranformerv4"
-    # root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
-    root_dataset = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org' # GCluster
+    root_dataset = 'data/ddmof/mof_split_val1000_test1000_seed0_org'  # Data directory
+    # root_dataset = 'data/ddmof/mof_cluster_split_val1_test3_seed0_org' # GCluster
     root_dataset = str(Path(__file__).parent.parent/"CGCNN_MT"/root_dataset)
     tasks = {
         'SymlogAbsLoadingCO2': "regression", 
@@ -354,12 +354,13 @@ def ads_co2_n2_org_v4():
     # Langmuir gating configuration
     langmuir_learnable_b = True   # Whether b parameter is learnable
     langmuir_b_init = 1.0         # Initial value for b (1/bar)
-    output_activation = "leaky_relu"  # Output activation: 'none', 'softplus', 'relu', 'leaky_relu'
+    output_activation = "softplus"  # Output activation: 'none', 'softplus', 'relu', 'leaky_relu'
     arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
     co2_fraction_idx = 2          # Index of CO2Fraction in extra_fea
     langmuir_learnable_power = False   # enabel learnable power for pressure in langmuir gate (P^n/(1+bP^n))
     langmuir_power = 1.0              # initial value for power
     langmuir_power_min = 1.0          # minimum value for power
+    langmuir_power_max = 5.0          # maximum value for power
     langmuir_output_transform = "symlog"  # Output transform to match label scale
     langmuir_symlog_threshold = 1e-4      # Symlog threshold
 
@@ -391,11 +392,12 @@ def ads_co2_n2_pure_v4():
     # Langmuir gating configuration
     langmuir_learnable_b = True   # Whether b parameter is learnable
     langmuir_b_init = 1.0         # Initial value for b (1/bar)
-    output_activation = "leaky_relu"  # Output activation: 'none', 'softplus', 'relu', 'leaky_relu'
+    output_activation = "softplus"  # Output activation: 'none', 'softplus', 'relu', 'leaky_relu'
     arcsinh_pressure_idx = 0      # Index of ArcsinhPressure in extra_fea
     langmuir_learnable_power = False   # enabel learnable power for pressure in langmuir gate (P^n/(1+bP^n))
     langmuir_power = 1.0              # initial value for power
     langmuir_power_min = 1.0          # minimum value for power
+    langmuir_power_max = 5.0          # maximum value for power
     langmuir_output_transform = "symlog"  # Output transform to match label scale
     langmuir_symlog_threshold = 1e-4      # Symlog threshold
     # Note: co2_fraction_idx not needed for pure component; 
