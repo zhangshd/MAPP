@@ -21,4 +21,7 @@ GCMC/data
 *.ckpt
 */feature_folders
 */figures
-results/
+**/graphs_grids
+**/graphs
+**/*results*/*
+!results/*

@@ -1,0 +1,29 @@
+# Model paths configuration for MAPP experiments
+# All paths are relative to project root
+
+models:
+  # MAPP mixture models (predict CO2/N2 mixture adsorption)
+  # GMOF: Global MOF-based data split
+  MAPP_GMOF: "MOFTransformer/logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_14"
+  # GCluster: Cluster-based data split
+  MAPP_GCluster: "MOFTransformer/logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_12"
+  
+  # CGCNN mixture models
+  CGCNN_GMOF: "CGCNN_MT/logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/version_7"
+  CGCNN_GCluster: "CGCNN_MT/logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/version_8"
+  
+  # Pure component models (for IAST prediction)
+  MAPPPure: "MOFTransformer/logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_2"
+
+
+# Data paths
+data:
+  ddmof_cifs: "CGCNN_MT/data/ddmof/cifs"
+  ddmof_data: "CGCNN_MT/data/ddmof"
+  exp_mof_data: "CGCNN_MT/data/exp_mof_data"
+
+
+# Output paths
+output:
+  results: "results"
+  figures: "results/figures"

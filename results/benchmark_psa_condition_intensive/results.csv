@@ -1,0 +1,3 @@
+Method,TotalTime,Analysis
+MAPP,92.91173982620239,Model Load + Batch Inference (GPU)
+MAPPPure+IAST,81.64292812347412,Model Load + Pure Infer + Fitting + IAST Loop (CPU)
