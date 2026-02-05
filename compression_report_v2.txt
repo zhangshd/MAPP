@@ -1,0 +1,75 @@
+
+================================================================================
+COMPRESSION REPORT FOR ZENODO VERSION 2
+================================================================================
+
+1. mof_cluster_split_val1_test3_seed0_org
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/mof_cluster_split_val1_test3_seed0_org_csv.zip
+   Original Size: 178.41 MB
+   Compressed Size: 69.60 MB
+   Compression Ratio: 61.0%
+   Files Compressed: 3
+
+2. mof_split_val1000_test1000_seed0_org
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/mof_split_val1000_test1000_seed0_org_csv.zip
+   Original Size: 200.33 MB
+   Compressed Size: 78.20 MB
+   Compression Ratio: 61.0%
+   Files Compressed: 3
+
+3. version_14
+   Output: /home/zhangsd/repos/CF-BGAP/MOFTransformer/logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/model_MAPP_GMOF_v4.tar.gz
+   Original Size: 7453.72 MB
+   Compressed Size: 6188.60 MB
+   Compression Ratio: 17.0%
+
+4. version_12
+   Output: /home/zhangsd/repos/CF-BGAP/MOFTransformer/logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/model_MAPP_GCluster_v4.tar.gz
+   Original Size: 4167.12 MB
+   Compressed Size: 3821.98 MB
+   Compression Ratio: 8.3%
+
+5. version_2
+   Output: /home/zhangsd/repos/CF-BGAP/MOFTransformer/logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/model_MAPPPure.tar.gz
+   Original Size: 3466.35 MB
+   Compressed Size: 3183.54 MB
+   Compression Ratio: 8.2%
+
+6. version_7
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/model_CGCNN_GMOF.tar.gz
+   Original Size: 57.89 MB
+   Compressed Size: 36.10 MB
+   Compression Ratio: 37.6%
+
+7. version_8
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/logs/SymlogAbsLoadingCO2_SymlogAbsLoadingN2_seed42_cgcnn_langmuir/model_CGCNN_GCluster.tar.gz
+   Original Size: 112.29 MB
+   Compressed Size: 81.74 MB
+   Compression Ratio: 27.2%
+
+8. exp_mof_data
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/exp_mof_data.tar.gz
+   Original Size: 0.11 MB
+   Compressed Size: 0.02 MB
+   Compression Ratio: 77.9%
+
+9. 00-isotherm-data-ddmof_extra_test100.tsv
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/isotherm_extra_test.tar.gz
+   Original Size: 4.38 MB
+   Compressed Size: 0.74 MB
+   Compression Ratio: 83.0%
+
+10. id_condition_ads_qst_org_all.csv
+   Output: /home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/processed_data.tar.gz
+   Original Size: 203.09 MB
+   Compressed Size: 78.84 MB
+   Compression Ratio: 61.2%
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Total Original Size: 15843.69 MB (15.47 GB)
+Total Compressed Size: 13539.36 MB (13.22 GB)
+Overall Compression Ratio: 14.5%
+Space Saved: 2304.33 MB
+================================================================================

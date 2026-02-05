@@ -451,11 +451,12 @@ class InferenceDataset(torch.utils.data.Dataset):
 #     # model = Module.load_from_checkpoint(model_file, **hparams)
 #     return config
 
-def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=None, uncertainty_trees_file=None, **kwargs):
+def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=None, uncertainty_trees_file=None, save_csv=True, **kwargs):
     """
     Args:    
         cif_list (list or str): list of cif file paths or a single cif file path.
         model (MInterface): trained model.
+        save_csv (bool): if True, save prediction results to CSV files. Default True.
     """
 
     # set up model
@@ -565,9 +566,9 @@ def inference(cif_list, model_dir, saved_dir, co2frac=None, press=None, inputs=N
             out_cols.append("PredictedProb")
             out_cols.append("PredictedProbStd")
         df_res = df_res.reindex(columns=out_cols)
-        df_res.to_csv(saved_dir/f"{task}_predictions_{model_name}.csv", index=False)
-        # np.savez(saved_dir/f"{task}_last_layer_fea.npz", task_outputs["last_layer_fea"])
-        print(f"Saved predictions for task {task} to {saved_dir/f'{task}_predictions_{model_name}.csv'}")
+        if save_csv:
+            df_res.to_csv(saved_dir/f"{task}_predictions_{model_name}.csv", index=False)
+            print(f"Saved predictions for task {task} to {saved_dir/f'{task}_predictions_{model_name}.csv'}")
         all_outputs[task] = task_outputs
         
     
@@ -580,51 +581,16 @@ if __name__ == "__main__":
     # cif_dir = Path(__file__).parent.parent/"GCMC/data/ddmof/cifs"
     cif_dir = Path(__file__).parent.parent/"CGCNN_MT/data/exp_MOF"
     # cif_dir = Path(__file__).parent.parent/"CGCNN_MT/data/ddmof/cifs"
-    # cif_dir = Path(__file__).parent.parent/"GCMC/data/CoREMOF2019/cifs"
-    # cif_dir = Path("/home/zhangsd/repos/CF-BGAP/RASPATOOLS/examples/dup_demo_CALF20")
-    # cif_dir = Path("/home/zhangsd/repos/CF-BGAP/RASPATOOLS/examples/dup_CuBTC")
+   
     if cif_dir.name == "cifs":
         notes = cif_dir.parent.name if clean else cif_dir.parent.name + "_raw"
     else:
         notes = cif_dir.name if clean else cif_dir.name + "_raw"
 
-    # df = pd.read_csv("/home/zhangsd/repos/CF-BGAP/CGCNN_MT/data/ddmof/mo  f_split_val10_test10_seed0/test.csv")
-    # cif_list = df["MofName"].tolist()
-    # cif_list = [cif_dir/(cif + ".cif") for cif in cif_list]
-
     cif_list = list(cif_dir.glob("*.cif"))
     print("Number of cifs:", len(cif_list))
     
-    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_from_/version_15"
-    # model_dir = Path(__file__).parent/"logs/test_seed42_from_/version_50"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_seed42_extranformerv2_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_seed42_extranformerv2_from_pmtransformer/version_1"
-    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_extranformerv2_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_seed42_extranformerv2_from_pmtransformer/version_1"
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv2_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv1p_from_/version_3"
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_mix_seed42_extranformerv3_from_pmtransformer/version_0"
-    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_2"
-    # model_dir = Path(__file__).parent/"logs/ads_qst_co2_n2_org_v4_sel_seed42_extranformerv4_from_pmtransformer/version_4"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_4"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_2"  # GMOF no selectivity loss & no langmuir gate
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_3"  # GMOF with selectivity loss & output softplus
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_4"  # GCluster w/o selectivity loss & output softplus
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_5"  # GMOF w/o selectivity loss & output softplus
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_5"  # GMOF
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_6"  # GCluster
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_7"  # GMOF no selectivity loss
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_9"  # GMOF
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_10"  # GMOF
     model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_v4_seed42_extranformerv4_from_pmtransformer/version_14"  # GMOF
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_1"
-    # model_dir = Path(__file__).parent/"logs/ads_s_co2_n2_abs_seed42_extranformerv3_from_pmtransformer/version_2"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_org_seed42_extranformerv3_from_pmtransformer/version_1"
-    # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_1"
     # model_dir = Path(__file__).parent/"logs/ads_co2_n2_pure_v4_seed42_extranformerv4_from_pmtransformer/version_2" # GMOF pure softplus out&langmuir gate
     uncertainty_trees_file = model_dir/"uncertainty_trees.pkl"
     if not uncertainty_trees_file.exists():

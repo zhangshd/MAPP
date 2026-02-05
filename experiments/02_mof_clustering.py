@@ -409,13 +409,13 @@ def main(args):
     
     # Add cluster labels to descriptors
     descriptors["Cluster"] = clusters
-    output_file = data_dir / "RAC_and_zeo_features_clustered_r1_.csv"
+    output_file = data_dir / "RAC_and_zeo_features_clustered_r1.csv"
     descriptors.to_csv(output_file, index=False)
     print(f"\nSaved clustered descriptors to: {output_file}")
     
     # Find cluster centroids
     centroids_df = find_cluster_centroids(descriptors, clusters, features_scaled)
-    centroids_file = data_dir / "cluster_centroids_r1_.csv"
+    centroids_file = data_dir / "cluster_centroids_r1.csv"
     centroids_df.to_csv(centroids_file, index=False)
     print(f"Saved cluster centroids to: {centroids_file}")
     

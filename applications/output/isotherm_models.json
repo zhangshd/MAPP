@@ -1,0 +1,437 @@
+{
+  "ddmof_6526": {
+    "CO2": {
+      "fitted_isotherm": {
+        "adsorbate": "carbon dioxide",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.01361423172056675,
+            9.681861877441406
+          ],
+          "name": "Langmuir",
+          "parameters": {
+            "K": 0.014365725912009073,
+            "n_m": 76.54074569698032
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.005421380644213187
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_6526",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Langmuir",
+      "R2": 0.9995767751207864,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.01361423172056675,
+        9.681861877441406
+      ]
+    },
+    "N2": {
+      "fitted_isotherm": {
+        "adsorbate": "nitrogen",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.001793765346519649,
+            2.0428707599639893
+          ],
+          "name": "Toth",
+          "parameters": {
+            "K": 0.03995615875267408,
+            "n_m": 5.354665371369612,
+            "t": 2.352400487845667
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.004791571507434397
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_6526",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Toth",
+      "R2": 0.9996728611154314,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.001793765346519649,
+        2.0428707599639893
+      ]
+    }
+  },
+  "ddmof_10001": {
+    "CO2": {
+      "fitted_isotherm": {
+        "adsorbate": "carbon dioxide",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.10050559043884277,
+            7.045531272888184
+          ],
+          "name": "Toth",
+          "parameters": {
+            "K": 1.7713851314454558,
+            "n_m": 14.68591497671769,
+            "t": 0.37157460529190406
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.023813397950155947
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_10001",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Toth",
+      "R2": 0.9936103298532176,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.10050559043884277,
+        7.045531272888184
+      ]
+    },
+    "N2": {
+      "fitted_isotherm": {
+        "adsorbate": "nitrogen",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.002335025230422616,
+            1.4636849164962769
+          ],
+          "name": "DSLangmuir",
+          "parameters": {
+            "K1": 0.008174997140797335,
+            "K2": 0.6954281846798412,
+            "n_m1": 17.05902333037754,
+            "n_m2": 0.20485028157409726
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.007031753482143213
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_10001",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "DSLangmuir",
+      "R2": 0.9993294229854579,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.002335025230422616,
+        1.4636849164962769
+      ]
+    }
+  },
+  "ddmof_18738": {
+    "CO2": {
+      "fitted_isotherm": {
+        "adsorbate": "carbon dioxide",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.012656176462769508,
+            13.671486854553223
+          ],
+          "name": "Henry",
+          "parameters": {
+            "K": 1.352360454923646
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.006032801466874877
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_18738",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Henry",
+      "R2": 0.999460576150651,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.012656176462769508,
+        13.671486854553223
+      ]
+    },
+    "N2": {
+      "fitted_isotherm": {
+        "adsorbate": "nitrogen",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.0026990999467670918,
+            2.7710671424865723
+          ],
+          "name": "Langmuir",
+          "parameters": {
+            "K": 0.002386532293058862,
+            "n_m": 118.80255033276701
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.0011269662136127268
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_18738",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Langmuir",
+      "R2": 0.9999814943640873,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.0026990999467670918,
+        2.7710671424865723
+      ]
+    }
+  },
+  "ddmof_5597": {
+    "CO2": {
+      "fitted_isotherm": {
+        "adsorbate": "carbon dioxide",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.026630301028490067,
+            16.771703720092773
+          ],
+          "name": "Toth",
+          "parameters": {
+            "K": 0.05859711956163798,
+            "n_m": 37.87571942757607,
+            "t": 1.3807851853903397
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.00626591574995094
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_5597",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Toth",
+      "R2": 0.9994825587056633,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.026630301028490067,
+        16.771703720092773
+      ]
+    },
+    "N2": {
+      "fitted_isotherm": {
+        "adsorbate": "nitrogen",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.002378029515966773,
+            2.2401845455169678
+          ],
+          "name": "Toth",
+          "parameters": {
+            "K": 0.014821451869415327,
+            "n_m": 16.37039192293788,
+            "t": 1.2049349607176785
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.00219954105569146
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_5597",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Toth",
+      "R2": 0.9999310953690379,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.002378029515966773,
+        2.2401845455169678
+      ]
+    }
+  },
+  "ddmof_17006": {
+    "CO2": {
+      "fitted_isotherm": {
+        "adsorbate": "carbon dioxide",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.010640745982527733,
+            12.29289722442627
+          ],
+          "name": "Henry",
+          "parameters": {
+            "K": 1.1754781213911198
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.014614963712307014
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_17006",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Henry",
+      "R2": 0.996657147334741,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.010640745982527733,
+        12.29289722442627
+      ]
+    },
+    "N2": {
+      "fitted_isotherm": {
+        "adsorbate": "nitrogen",
+        "branch": "ads",
+        "file_version": "3.0",
+        "isotherm_model": {
+          "loading_range": [
+            0.0032904925756156445,
+            3.059108257293701
+          ],
+          "name": "Toth",
+          "parameters": {
+            "K": 0.005634554606460538,
+            "n_m": 61.33406292438159,
+            "t": 0.795156644154611
+          },
+          "pressure_range": [
+            0.009999999776482582,
+            10.000000953674316
+          ],
+          "rmse": 0.002903082730633999
+        },
+        "loading_basis": "molar",
+        "loading_unit": "mmol",
+        "material": "ddmof_17006",
+        "material_basis": "mass",
+        "material_unit": "g",
+        "pressure_mode": "absolute",
+        "pressure_unit": "bar",
+        "temperature": 298.0,
+        "temperature_unit": "K"
+      },
+      "model_name": "Toth",
+      "R2": 0.9998804941554614,
+      "pressure_range": [
+        0.009999999776482582,
+        10.000000953674316
+      ],
+      "loading_range": [
+        0.0032904925756156445,
+        3.059108257293701
+      ]
+    }
+  }
+}
