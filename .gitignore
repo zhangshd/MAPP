@@ -17,6 +17,7 @@ inference/*
 test.ipynb
 CGCNN_MT/data
 GCMC/data
+GCMC/
 *.sh
 *.ckpt
 */feature_folders
@@ -25,3 +26,4 @@ GCMC/data
 **/graphs
 **/*results*/*
 !results/*
+!upload_to_zenodo.sh
