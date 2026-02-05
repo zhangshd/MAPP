@@ -38,7 +38,7 @@ MAPP/
 │   ├── models/                 # Pre-trained models (pmtransformer.ckpt)
 │   └── logs/                   # Training logs (available at https://zenodo.org/records/15796756)
 │
-├── RASPATOOLS/                 # GCMC validation toolkit (see RASPATOOLS/README.md)
+├── RASPATOOLS/                 # GCMC toolkit (see RASPATOOLS/README.md)
 │
 ├── descriptors/                # MOF descriptor generation
 │   ├── feature_generation.py   # RAC and Zeo++ descriptor generation
